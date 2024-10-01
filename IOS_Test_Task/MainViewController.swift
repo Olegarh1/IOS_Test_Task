@@ -9,48 +9,62 @@ import UIKit
 import SnapKit
 
 class MainViewController: UIViewController {
-
+    
     // MARK: - Private UI elements
     private let exportView = UIView()
-    private let socialMediaView = UIView().after {
-        $0.layer.borderColor = UIColor(hex: "#33343A").cgColor
-        $0.layer.borderWidth = 1.0
-        $0.layer.cornerRadius = 12.0
-        $0.layer.shadowRadius = 4.0
-        $0.layer.shadowOpacity = 1.0
-        $0.layer.shadowOffset = CGSize(width: 0.0, height: 2.0)
-    }
+    private let socialMediaView = CustomView()
     private lazy var socialMediaSegment: UISegmentedControl = {
         let segmentControl = UISegmentedControl(items: ["Instagram", "TikTok", "YouTube", "Snapchat"])
-        segmentControl.tintColor = .white
+        let titleTextAttributes = [NSAttributedString.Key.foregroundColor: UIColor.white]
+        UISegmentedControl.appearance().setTitleTextAttributes(titleTextAttributes, for: .normal)
+        
         segmentControl.selectedSegmentIndex = 0
         segmentControl.addTarget(self, action: #selector(segmentChanged), for: .valueChanged)
-        segmentControl.backgroundColor = .clear
         segmentControl.selectedSegmentTintColor = UIColor(hex: "#33343A")
         segmentControl.translatesAutoresizingMaskIntoConstraints = false
-
+        segmentControl.backgroundColor = UIColor.black.withAlphaComponent(0.5)
+        let separator = UIColor(hex: "#18191b").image()
+        segmentControl.setDividerImage(separator, forLeftSegmentState: .normal, rightSegmentState: .normal, barMetrics: .default)
+        segmentControl.layer.shadowColor = UIColor(hex: "#18191b").cgColor
+        
         return segmentControl
     }()
-    private let qualityView = UIView().after {
-        $0.layer.borderColor = UIColor(hex: "#33343A").cgColor
-        $0.layer.borderWidth = 1.0
-        $0.layer.cornerRadius = 12.0
-        $0.layer.shadowRadius = 4.0
-        $0.layer.shadowOpacity = 1.0
-        $0.layer.shadowOffset = CGSize(width: 0.0, height: 2.0)
+    private let qualityView = CustomView()
+    private lazy var qualitySegment: UISegmentedControl = {
+        let segmentControl = UISegmentedControl(items: ["Standart", "HD", "4K"])
+        let titleTextAttributes = [
+                NSAttributedString.Key.foregroundColor: UIColor.white,
+                NSAttributedString.Key.font: UIFont(name: "Inter-SemiBold", size: 16.0)
+            ]
+        UISegmentedControl.appearance().setTitleTextAttributes(titleTextAttributes as [NSAttributedString.Key : Any], for: .normal)
+        
+        segmentControl.selectedSegmentIndex = 0
+        segmentControl.addTarget(self, action: #selector(segmentChanged), for: .valueChanged)
+        segmentControl.selectedSegmentTintColor = UIColor(hex: "#33343A")
+        segmentControl.translatesAutoresizingMaskIntoConstraints = false
+        segmentControl.backgroundColor = UIColor.black.withAlphaComponent(0.5)
+        let separator = UIColor(hex: "#18191b").image()
+        segmentControl.setDividerImage(separator, forLeftSegmentState: .normal, rightSegmentState: .normal, barMetrics: .default)
+        segmentControl.layer.shadowColor = UIColor(hex: "#18191b").cgColor
+        
+        return segmentControl
+    }()
+    private let proLabel = ProLabel()
+    private let watermarkView = CustomView()
+    private let watermarkLabel = UILabel().after {
+        $0.text = "Remove Watermark"
+        $0.font = UIFont(name: "Inter-SemiBold", size: 16.0)
+        $0.textColor = UIColor(hex: "#A0A2AF")
     }
-    private let watermarkView = UIView().after {
-        $0.layer.borderColor = UIColor(hex: "#33343A").cgColor
-        $0.layer.borderWidth = 1.0
-        $0.layer.cornerRadius = 12.0
-        $0.layer.shadowRadius = 4.0
-        $0.layer.shadowOpacity = 1.0
-        $0.layer.shadowOffset = CGSize(width: 0.0, height: 2.0)
+    private lazy var watermarkSwitch = UISwitch().after {
+        $0.tintColor = UIColor(hex: "#33343A")
+        $0.onTintColor = UIColor(hex: "#33343A")
+        $0.addTarget(self, action: #selector(switchChanged(_:)), for: .valueChanged)
+        $0.thumbTintColor = UIColor(hex: "#64656D")
     }
     private var sizeLabel = UILabel().after {
         $0.text = "Estimated File Size: 24.5 MB"
         $0.font = UIFont(name: "Inter-Medium", size: 13.0)
-        
         $0.textColor = UIColor(hex: "#727479")
     }
     private lazy var editButton: UIButton = {
@@ -97,13 +111,7 @@ class MainViewController: UIViewController {
         
         button.startColor = UIColor(hex: "#0086E0")
         button.endColor = UIColor(hex: "#0071BD")
-        
-        //TODO: - Shadow
-        button.layer.shadowColor = UIColor(hex: "#0071BD").cgColor
-        button.layer.shadowOpacity = 0.25
-        button.layer.shadowOffset = CGSize(width: 0, height: 8)
-        button.layer.shadowRadius = 24.0
-        
+
         return button
     }()
     // MARK: - Lifecycle
@@ -113,7 +121,10 @@ class MainViewController: UIViewController {
         addImagesToSegments()
         setupSubviews()
         setupConstraints()
+        proLabel.isHidden = true
+//        watermarkSwitch.isHidden = true
         view.backgroundColor = UIColor(hex: "#18191b")
+
     }
 }
 
@@ -128,6 +139,10 @@ private extension MainViewController {
             exportView.addSubview($0)
         }
         socialMediaView.addSubview(socialMediaSegment)
+        watermarkView.addSubview(watermarkLabel)
+        watermarkView.addSubview(watermarkSwitch)
+        watermarkView.addSubview(proLabel)
+        qualityView.addSubview(qualitySegment)
     }
     
     func setupConstraints() {
@@ -148,10 +163,27 @@ private extension MainViewController {
             $0.left.right.equalToSuperview()
             $0.height.equalTo(socialMediaView.snp.height)
         }
+        qualitySegment.snp.makeConstraints {
+            $0.edges.equalToSuperview().inset(8.0)
+        }
         watermarkView.snp.makeConstraints {
             $0.top.equalTo(qualityView.snp.bottom).inset(-8.0)
             $0.left.right.equalToSuperview()
             $0.height.equalTo(socialMediaView.snp.height)
+        }
+        watermarkLabel.snp.makeConstraints {
+            $0.centerY.equalToSuperview()
+            $0.left.equalToSuperview().inset(16.0)
+        }
+        watermarkSwitch.snp.makeConstraints {
+            $0.centerY.equalToSuperview()
+            $0.right.equalToSuperview().inset(16.0)
+        }
+        proLabel.snp.makeConstraints {
+            $0.width.equalTo(45.0)
+            $0.height.equalTo(26.0)
+            $0.centerY.equalToSuperview()
+            $0.right.equalToSuperview().inset(16.0)
         }
         sizeLabel.snp.makeConstraints {
             $0.centerX.equalToSuperview()
@@ -173,20 +205,20 @@ private extension MainViewController {
     
     func addImagesToSegments() {
         let images = ["mingcute_ins-line", "mingcute_tiktok-line", "mingcute_youtube-line", "mingcute_snapchat-line"]
-        let title = ["Instagram", "TikTok", "YouTube", "Snapchat"]
         for index in 0...images.count - 1{
             if let image = UIImage(named: images[index])?.withRenderingMode(.alwaysTemplate) {
                 let resizedImage = resizeImage(image: image, targetSize: CGSize(width: 24.0, height: 24.0))
                 socialMediaSegment.setImage(
                     UIImage.textEmbededImage(
                         image: resizedImage,
-                        string: "", //Use title[index] to show title
+                        string: "",
                         color: .black
                     ),
                     forSegmentAt: index
                 )
             }
         }
+        socialMediaSegment.tintColor = .white
     }
     
     func resizeImage(image: UIImage, targetSize: CGSize) -> UIImage {
@@ -217,4 +249,12 @@ private extension MainViewController {
     func editBtnTapped() {}
     
     func segmentChanged() {}
+    
+    func switchChanged(_ sender: UISwitch) {
+        if sender.isOn {
+            sender.thumbTintColor = UIColor(hex: "#0086E0")
+        } else {
+            sender.thumbTintColor = UIColor(hex: "#64656D")
+        }
+    }
 }

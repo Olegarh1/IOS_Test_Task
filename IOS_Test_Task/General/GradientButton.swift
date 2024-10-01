@@ -8,7 +8,7 @@
 import UIKit
 
 @IBDesignable
-class GradientButton: UIButton {
+final class GradientButton: UIButton {
     
     @IBInspectable var startColor: UIColor = UIColor.red {
         didSet {
@@ -21,7 +21,7 @@ class GradientButton: UIButton {
         }
     }
     
-    let gradientLayer = CAGradientLayer()
+    private let gradientLayer = CAGradientLayer()
     
     override func draw(_ rect: CGRect) {
         
@@ -35,7 +35,7 @@ class GradientButton: UIButton {
         clipsToBounds = true
     }
     
-    func updateGradient() {
+    private func updateGradient() {
         gradientLayer.colors = [startColor.cgColor, endColor.cgColor]
     }
 }
