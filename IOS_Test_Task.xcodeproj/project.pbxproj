@@ -15,7 +15,7 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		7C0451C02CAA7389007EDAF0 /* Exceptions for "IOS_Test_Task" folder in "IOS_Test_Task" target */ = {
+		7C8107B72CAC2CED0096D66D /* Exceptions for "IOS_Test_Task" folder in "IOS_Test_Task" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Applications/Info.plist,
@@ -25,10 +25,10 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		7C0451B02CAA7388007EDAF0 /* IOS_Test_Task */ = {
+		7C8107992CAC29CA0096D66D /* IOS_Test_Task */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				7C0451C02CAA7389007EDAF0 /* Exceptions for "IOS_Test_Task" folder in "IOS_Test_Task" target */,
+				7C8107B72CAC2CED0096D66D /* Exceptions for "IOS_Test_Task" folder in "IOS_Test_Task" target */,
 			);
 			path = IOS_Test_Task;
 			sourceTree = "<group>";
@@ -50,7 +50,7 @@
 		7C0451A52CAA7388007EDAF0 = {
 			isa = PBXGroup;
 			children = (
-				7C0451B02CAA7388007EDAF0 /* IOS_Test_Task */,
+				7C8107992CAC29CA0096D66D /* IOS_Test_Task */,
 				7C0451AF2CAA7388007EDAF0 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -79,7 +79,7 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				7C0451B02CAA7388007EDAF0 /* IOS_Test_Task */,
+				7C8107992CAC29CA0096D66D /* IOS_Test_Task */,
 			);
 			name = IOS_Test_Task;
 			packageProductDependencies = (

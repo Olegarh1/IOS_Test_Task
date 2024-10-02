@@ -11,6 +11,10 @@ import SnapKit
 class MainViewController: UIViewController {
     
     // MARK: - Private UI elements
+    private let instagramView = InstagramView()
+    private let tikTokView = TikTokView()
+    private let youTubeView = YouTubeView()
+    private let snapchatView = SnapchatView()
     private let exportView = UIView()
     private let socialMediaView = CustomView()
     private lazy var socialMediaSegment: UISegmentedControl = {
@@ -114,6 +118,7 @@ class MainViewController: UIViewController {
 
         return button
     }()
+
     // MARK: - Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -132,10 +137,10 @@ class MainViewController: UIViewController {
 private extension MainViewController {
     
     func setupSubviews() {
-        [exportView,editButton,exportButton].forEach {
+        [instagramView, tikTokView, youTubeView, snapchatView, exportView, editButton, exportButton].forEach {
             view.addSubview($0)
         }
-        [socialMediaView,qualityView,watermarkView,sizeLabel].forEach {
+        [socialMediaView, qualityView, watermarkView, sizeLabel].forEach {
             exportView.addSubview($0)
         }
         socialMediaView.addSubview(socialMediaSegment)
@@ -146,6 +151,22 @@ private extension MainViewController {
     }
     
     func setupConstraints() {
+        instagramView.snp.makeConstraints {
+            $0.top.right.left.equalToSuperview().inset(16.0)
+            $0.bottom.equalTo(exportView.snp.top).inset(-16.0)
+        }
+        tikTokView.snp.makeConstraints {
+            $0.top.right.left.equalToSuperview().inset(16.0)
+            $0.bottom.equalTo(exportView.snp.top).inset(-16.0)
+        }
+        youTubeView.snp.makeConstraints {
+            $0.top.right.left.equalToSuperview().inset(16.0)
+            $0.bottom.equalTo(exportView.snp.top).inset(-16.0)
+        }
+        snapchatView.snp.makeConstraints {
+            $0.top.right.left.equalToSuperview().inset(16.0)
+            $0.bottom.equalTo(exportView.snp.top).inset(-16.0)
+        }
         exportView.snp.makeConstraints {
             $0.height.equalTo(250.0)
             $0.bottom.equalTo(editButton.snp.top).offset(-56.0)
@@ -248,7 +269,32 @@ private extension MainViewController {
     
     func editBtnTapped() {}
     
-    func segmentChanged() {}
+    func segmentChanged(sender: UISegmentedControl) {
+        switch sender.selectedSegmentIndex {
+        case 0:
+            instagramView.isHidden = false
+            [tikTokView,youTubeView,snapchatView].forEach {
+                $0.isHidden = true
+            }
+        case 1:
+            tikTokView.isHidden = false
+            [instagramView,youTubeView,snapchatView].forEach {
+                $0.isHidden = true
+            }
+        case 2:
+            youTubeView.isHidden = false
+            [instagramView,tikTokView,snapchatView].forEach {
+                $0.isHidden = true
+            }
+        case 3:
+            snapchatView.isHidden = false
+            [tikTokView,youTubeView,instagramView].forEach {
+                $0.isHidden = true
+            }
+        default:
+            return
+        }
+    }
     
     func switchChanged(_ sender: UISwitch) {
         if sender.isOn {
