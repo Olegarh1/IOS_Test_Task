@@ -26,3 +26,16 @@ class CustomView: UIView {
         layer.shadowOffset = CGSize(width: 0.0, height: 2.0)
     }
 }
+
+extension UIView {
+    var parentViewController: UIViewController? {
+        var parentResponder: UIResponder? = self
+        while parentResponder != nil {
+            parentResponder = parentResponder?.next
+            if let vc = parentResponder as? UIViewController {
+                return vc
+            }
+        }
+        return nil
+    }
+}

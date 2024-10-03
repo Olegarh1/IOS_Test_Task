@@ -1,11 +1,35 @@
 //
-//  Untitled.swift
+//  ImageUtils.swift
 //  IOS_Test_Task
 //
-//  Created by Oleg Zakladnyi on 30.09.2024.
+//  Created by Oleg Zakladnyi on 03.10.2024.
 //
 
 import UIKit
+
+class ImageUtils {
+    
+    class func resizeImage(image: UIImage, targetSize: CGSize) -> UIImage {
+        let size = image.size
+        
+        let widthRatio  = targetSize.width  / size.width
+        let heightRatio = targetSize.height / size.height
+        
+        let newSize: CGSize
+        if(widthRatio > heightRatio) {
+            newSize = CGSize(width: size.width * heightRatio, height: size.height * heightRatio)
+        } else {
+            newSize = CGSize(width: size.width * widthRatio,  height: size.height * widthRatio)
+        }
+        
+        UIGraphicsBeginImageContextWithOptions(newSize, false, 0.0)
+        image.draw(in: CGRect(origin: CGPoint.zero, size: newSize))
+        let newImage = UIGraphicsGetImageFromCurrentImageContext()
+        UIGraphicsEndImageContext()
+        
+        return newImage!
+    }
+}
 
 extension UIImage {
     
@@ -38,4 +62,3 @@ extension UIImage {
         return newImage!
     }
 }
-

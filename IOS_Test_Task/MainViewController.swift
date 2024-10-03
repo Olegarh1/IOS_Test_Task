@@ -7,14 +7,32 @@
 
 import UIKit
 import SnapKit
+import Photos
 
 class MainViewController: UIViewController {
     
     // MARK: - Private UI elements
-    private let instagramView = InstagramView()
-    private let tikTokView = TikTokView()
-    private let youTubeView = YouTubeView()
-    private let snapchatView = SnapchatView()
+    private let instagramView = InstagramView().after{
+        $0.isHidden = true
+    }
+    private let tikTokView = TikTokView().after{
+        $0.isHidden = false
+        $0.layer.zPosition = 0
+    }
+    private let youTubeView = YouTubeView().after{
+        $0.isHidden = true
+    }
+    private let snapchatView = SnapchatView().after{
+        $0.isHidden = true
+    }
+    private let markLabel = UILabel().after {
+        $0.layer.zPosition = 1
+        $0.text = "Watermark"
+        $0.textColor = .red
+        $0.font = UIFont(name: "Inter-SemiBold", size: 36.0)
+        $0.alpha = 0.5
+        $0.transform = CGAffineTransform(rotationAngle: -45 * .pi / 180)
+    }
     private let exportView = UIView()
     private let socialMediaView = CustomView()
     private lazy var socialMediaSegment: UISegmentedControl = {
@@ -22,8 +40,8 @@ class MainViewController: UIViewController {
         let titleTextAttributes = [NSAttributedString.Key.foregroundColor: UIColor.white]
         UISegmentedControl.appearance().setTitleTextAttributes(titleTextAttributes, for: .normal)
         
-        segmentControl.selectedSegmentIndex = 0
-        segmentControl.addTarget(self, action: #selector(segmentChanged), for: .valueChanged)
+        segmentControl.selectedSegmentIndex = 1
+        segmentControl.addTarget(self, action: #selector(mediaSegmentChanged), for: .valueChanged)
         segmentControl.selectedSegmentTintColor = UIColor(hex: "#33343A")
         segmentControl.translatesAutoresizingMaskIntoConstraints = false
         segmentControl.backgroundColor = UIColor.black.withAlphaComponent(0.5)
@@ -37,13 +55,13 @@ class MainViewController: UIViewController {
     private lazy var qualitySegment: UISegmentedControl = {
         let segmentControl = UISegmentedControl(items: ["Standart", "HD", "4K"])
         let titleTextAttributes = [
-                NSAttributedString.Key.foregroundColor: UIColor.white,
-                NSAttributedString.Key.font: UIFont(name: "Inter-SemiBold", size: 16.0)
-            ]
+            NSAttributedString.Key.foregroundColor: UIColor.white,
+            NSAttributedString.Key.font: UIFont(name: "Inter-SemiBold", size: 16.0)
+        ]
         UISegmentedControl.appearance().setTitleTextAttributes(titleTextAttributes as [NSAttributedString.Key : Any], for: .normal)
         
         segmentControl.selectedSegmentIndex = 0
-        segmentControl.addTarget(self, action: #selector(segmentChanged), for: .valueChanged)
+        segmentControl.addTarget(self, action: #selector(qualitySegmentChanged), for: .valueChanged)
         segmentControl.selectedSegmentTintColor = UIColor(hex: "#33343A")
         segmentControl.translatesAutoresizingMaskIntoConstraints = false
         segmentControl.backgroundColor = UIColor.black.withAlphaComponent(0.5)
@@ -75,7 +93,7 @@ class MainViewController: UIViewController {
         let button = UIButton()
         
         if let image = UIImage(named: "edit") {
-            let resizedImage = resizeImage(image: image, targetSize: CGSize(width: 24.0, height: 24.0))
+            let resizedImage = ImageUtils.resizeImage(image: image, targetSize: CGSize(width: 24.0, height: 24.0))
             button.setImage(resizedImage.withRenderingMode(.alwaysTemplate), for: .normal)
             button.tintColor = .white
         }
@@ -90,6 +108,7 @@ class MainViewController: UIViewController {
         configuration.baseForegroundColor = .white
         configuration.background.cornerRadius = 27.0
         button.configuration = configuration
+        button.addTarget(self, action: #selector(editBtnTapped), for: .touchUpInside)
         
         return button
     }()
@@ -97,7 +116,7 @@ class MainViewController: UIViewController {
         let button = GradientButton()
         
         if let image = UIImage(named: "download") {
-            let resizedImage = resizeImage(image: image, targetSize: CGSize(width: 24.0, height: 24.0))
+            let resizedImage = ImageUtils.resizeImage(image: image, targetSize: CGSize(width: 24.0, height: 24.0))
             button.setImage(resizedImage.withRenderingMode(.alwaysTemplate), for: .normal)
             button.tintColor = .white
         }
@@ -115,10 +134,10 @@ class MainViewController: UIViewController {
         
         button.startColor = UIColor(hex: "#0086E0")
         button.endColor = UIColor(hex: "#0071BD")
-
+        
         return button
     }()
-
+    
     // MARK: - Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -126,10 +145,6 @@ class MainViewController: UIViewController {
         addImagesToSegments()
         setupSubviews()
         setupConstraints()
-        proLabel.isHidden = true
-//        watermarkSwitch.isHidden = true
-        view.backgroundColor = UIColor(hex: "#18191b")
-
     }
 }
 
@@ -137,6 +152,10 @@ class MainViewController: UIViewController {
 private extension MainViewController {
     
     func setupSubviews() {
+        view.backgroundColor = UIColor(hex: "#18191b")
+        proLabel.isHidden = true
+//        watermarkSwitch.isHidden = true
+        tikTokView.addSubview(markLabel)
         [instagramView, tikTokView, youTubeView, snapchatView, exportView, editButton, exportButton].forEach {
             view.addSubview($0)
         }
@@ -158,6 +177,9 @@ private extension MainViewController {
         tikTokView.snp.makeConstraints {
             $0.top.right.left.equalToSuperview().inset(16.0)
             $0.bottom.equalTo(exportView.snp.top).inset(-16.0)
+        }
+        markLabel.snp.makeConstraints {
+            $0.centerX.centerY.equalToSuperview()
         }
         youTubeView.snp.makeConstraints {
             $0.top.right.left.equalToSuperview().inset(16.0)
@@ -228,7 +250,7 @@ private extension MainViewController {
         let images = ["mingcute_ins-line", "mingcute_tiktok-line", "mingcute_youtube-line", "mingcute_snapchat-line"]
         for index in 0...images.count - 1{
             if let image = UIImage(named: images[index])?.withRenderingMode(.alwaysTemplate) {
-                let resizedImage = resizeImage(image: image, targetSize: CGSize(width: 24.0, height: 24.0))
+                let resizedImage = ImageUtils.resizeImage(image: image, targetSize: CGSize(width: 24.0, height: 24.0))
                 socialMediaSegment.setImage(
                     UIImage.textEmbededImage(
                         image: resizedImage,
@@ -242,34 +264,57 @@ private extension MainViewController {
         socialMediaSegment.tintColor = .white
     }
     
-    func resizeImage(image: UIImage, targetSize: CGSize) -> UIImage {
-        let size = image.size
+    func presentImagePicker() {
+        let vc = UIImagePickerController()
+        vc.sourceType = .photoLibrary
+        vc.delegate = self
+        vc.allowsEditing = true
+        vc.mediaTypes = ["public.image", "public.movie"]
+        self.present(vc, animated: true, completion: nil)
+    }
+}
 
-        let widthRatio  = targetSize.width  / size.width
-        let heightRatio = targetSize.height / size.height
-
-        let newSize: CGSize
-        if(widthRatio > heightRatio) {
-            newSize = CGSize(width: size.width * heightRatio, height: size.height * heightRatio)
-        } else {
-            newSize = CGSize(width: size.width * widthRatio,  height: size.height * widthRatio)
+// MARK: - UIImagePickerControllerDelegate, UINavigationControllerDelegate
+extension MainViewController: UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+    
+    func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
+        
+        if let image = info[UIImagePickerController.InfoKey(rawValue: "UIImagePickerControllerEditedImage")] as? UIImage {
+            self.tikTokView.displayImage(image)
         }
-
-        UIGraphicsBeginImageContextWithOptions(newSize, false, 0.0)
-        image.draw(in: CGRect(origin: CGPoint.zero, size: newSize))
-        let newImage = UIGraphicsGetImageFromCurrentImageContext()
-        UIGraphicsEndImageContext()
-
-        return newImage!
+        picker.dismiss(animated: true, completion: nil)
+    }
+    
+    func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+        picker.dismiss(animated: true, completion: nil)
     }
 }
 
 // MARK: - Private Objc-C method's
 @objc private extension MainViewController {
     
-    func editBtnTapped() {}
+    func editBtnTapped() {
+        PHPhotoLibrary.requestAuthorization { status in
+            switch status {
+            case .authorized:
+                DispatchQueue.main.async {
+                    self.presentImagePicker()
+                }
+            case .denied, .restricted:
+                print("Access denied")
+            case .notDetermined:
+                DispatchQueue.main.async {
+                    self.presentImagePicker()
+                }
+            default:
+                break
+            }
+        }
+    }
     
-    func segmentChanged(sender: UISegmentedControl) {
+    func qualitySegmentChanged() {}
+    
+    func mediaSegmentChanged(sender: UISegmentedControl) {
         switch sender.selectedSegmentIndex {
         case 0:
             instagramView.isHidden = false
@@ -298,8 +343,10 @@ private extension MainViewController {
     
     func switchChanged(_ sender: UISwitch) {
         if sender.isOn {
+            markLabel.isHidden = true
             sender.thumbTintColor = UIColor(hex: "#0086E0")
         } else {
+            markLabel.isHidden = false
             sender.thumbTintColor = UIColor(hex: "#64656D")
         }
     }
