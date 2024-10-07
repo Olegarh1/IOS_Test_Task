@@ -13,13 +13,6 @@ import CropViewController
 final class TikTokView: UIView {
     
     // MARK: - Private UI-Elements
-    private let imageView = UIImageView().after {
-        $0.contentMode = .scaleAspectFit
-        $0.clipsToBounds = true
-        $0.backgroundColor = .black
-        $0.layer.cornerRadius = 16.0
-        $0.layer.zPosition = -1
-    }
     private let avatarImageView = UIImageView().after {
         $0.contentMode = .scaleAspectFill
         $0.clipsToBounds = true
@@ -61,7 +54,7 @@ final class TikTokView: UIView {
         $0.contentMode = .scaleAspectFit
         $0.clipsToBounds = true
         $0.backgroundColor = .clear
-        $0.layer.cornerRadius = 16.0
+        $0.layer.cornerRadius = 18.0
         $0.isHidden = false
         
         if let image = UIImage(named: "music") {
@@ -116,7 +109,13 @@ final class TikTokView: UIView {
             $0.tintColor = .white
         }
     }
-    private lazy var songTextField: UITextField = createTextField(text: "Song name - song artist")
+    private let songTextField = UITextField().after {
+        $0.text = "Song name - song artist"
+        $0.font = UIFont(name: "Inter-Regular", size: 10.0) ?? UIFont.systemFont(ofSize: 10.0)
+        $0.textColor = .white
+        $0.backgroundColor = .clear
+        $0.textAlignment = .left
+    }
     private let noteImageView = UIImageView().after {
         $0.contentMode = .scaleAspectFit
         $0.clipsToBounds = true
@@ -139,6 +138,7 @@ final class TikTokView: UIView {
     private var isSaved = false
     private var reposts: Double = 132500
     private var isReposted = false
+    private var isAvatarSelected = false
     
     // MARK: - Lifecycle
     override init(frame: CGRect) {
@@ -156,11 +156,6 @@ final class TikTokView: UIView {
         setupTextFields()
         setupTapGesture()
     }
-    
-    func displayImage(_ image: UIImage) {
-        imageView.image = image
-        imageView.isHidden = false
-    }
 }
 
 private extension TikTokView {
@@ -168,19 +163,13 @@ private extension TikTokView {
     func setupSubviews() {
         tagsTextView.delegate = self
         captionTextView.delegate = self
-        self.backgroundColor = UIColor(hex: "#18191b")
-        [imageView, avatarImageView, subscribeButton, likeButton, likeTextField, commentButton, commentTextField, savedButton, savedTextField, repostButton, repostTextField, musicImageView, translateTextField, usernameTextField, captionTextView, tagsTextView, translateImageView, songTextField, noteImageView].forEach {
+        self.backgroundColor = .clear
+        [avatarImageView, subscribeButton, likeButton, likeTextField, commentButton, commentTextField, savedButton, savedTextField, repostButton, repostTextField, musicImageView, translateTextField, usernameTextField, captionTextView, tagsTextView, translateImageView, songTextField, noteImageView].forEach {
             addSubview($0)
         }
     }
     
     func setupConstraints() {
-        imageView.snp.makeConstraints {
-            $0.width.equalTo(234.0)
-            $0.height.equalTo(416.0)
-            $0.centerX.equalToSuperview()
-            $0.top.equalToSuperview().inset(36.0)
-        }
         avatarImageView.snp.makeConstraints {
             $0.bottom.equalTo(likeButton.snp.top).inset(-16.0)
             $0.centerX.equalTo(musicImageView.snp.centerX)
@@ -223,8 +212,8 @@ private extension TikTokView {
             $0.centerX.equalTo(musicImageView.snp.centerX)
         }
         musicImageView.snp.makeConstraints {
-            $0.bottom.equalTo(imageView.snp.bottom).inset(8.0)
-            $0.right.equalTo(imageView.snp.right).inset(16.0)
+            $0.centerY.equalTo(noteImageView.snp.centerY)
+            $0.right.equalToSuperview().inset(8.0)
         }
         usernameTextField.snp.makeConstraints {
             $0.bottom.equalTo(captionTextView.snp.top).inset(-8.0)
@@ -246,7 +235,7 @@ private extension TikTokView {
         }
         translateImageView.snp.makeConstraints {
             $0.bottom.equalTo(noteImageView.snp.top).inset(-8.0)
-            $0.left.equalTo(imageView.snp.left).inset(16.0)
+            $0.left.equalToSuperview().inset(16.0)
         }
         songTextField.snp.makeConstraints {
             $0.width.equalTo(120.0)
@@ -254,8 +243,8 @@ private extension TikTokView {
             $0.left.equalTo(noteImageView.snp.right).inset(-8.0)
         }
         noteImageView.snp.makeConstraints {
-            $0.bottom.equalTo(imageView.snp.bottom).inset(16.0)
-            $0.left.equalTo(imageView.snp.left).inset(16.0)
+            $0.bottom.equalToSuperview().inset(16.0)
+            $0.left.equalToSuperview().inset(16.0)
         }
     }
     
@@ -291,6 +280,9 @@ private extension TikTokView {
         let avatarTapGesture = UITapGestureRecognizer(target: self, action: #selector(avatarTapped))
         avatarImageView.addGestureRecognizer(avatarTapGesture)
         avatarImageView.isUserInteractionEnabled = true
+        let musicTapGesture = UITapGestureRecognizer(target: self, action: #selector(musicTapped))
+        musicImageView.addGestureRecognizer(musicTapGesture)
+        musicImageView.isUserInteractionEnabled = true
     }
     
     func presentImagePicker() {
@@ -337,7 +329,7 @@ extension TikTokView: UITextFieldDelegate {
     func textField(_ textField: UITextField, shouldChangeCharactersIn range: NSRange, replacementString string: String) -> Bool {
         switch textField {
             
-        case CountTextField():
+        case _ as CountTextField:
             let allowedCharacters = CharacterSet.decimalDigits
             let characterSet = CharacterSet(charactersIn: string)
             
@@ -352,6 +344,8 @@ extension TikTokView: UITextFieldDelegate {
             return updatedText.count <= 10
             
         case usernameTextField:
+            return range.location < 24
+        case songTextField:
             return range.location < 24
         default:
             return true
@@ -429,9 +423,15 @@ extension TikTokView: CropViewControllerDelegate {
     
     func cropViewController(_ cropViewController: CropViewController, didCropToImage image: UIImage, withRect cropRect: CGRect, angle: Int) {
         let resizedImage = ImageUtils.resizeImage(image: image, targetSize: CGSize(width: 36.0, height: 36.0))
-        avatarImageView.image = resizedImage
-        avatarImageView.layer.cornerRadius = avatarImageView.frame.size.width / 2
-        avatarImageView.layer.masksToBounds = true
+        if isAvatarSelected == true {
+            avatarImageView.image = resizedImage
+            avatarImageView.layer.cornerRadius = avatarImageView.frame.size.width / 2
+            avatarImageView.layer.masksToBounds = true
+        } else {
+            musicImageView.image = resizedImage
+            musicImageView.layer.cornerRadius = avatarImageView.frame.size.width / 2
+            musicImageView.layer.masksToBounds = true
+        }
         cropViewController.dismiss(animated: true)
     }
 }
@@ -444,6 +444,12 @@ extension TikTokView: CropViewControllerDelegate {
     }
     
     func avatarTapped() {
+        isAvatarSelected = true
+        self.presentImagePicker()
+    }
+    
+    func musicTapped() {
+        isAvatarSelected = false
         self.presentImagePicker()
     }
     

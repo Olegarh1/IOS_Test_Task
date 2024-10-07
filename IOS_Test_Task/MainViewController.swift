@@ -8,6 +8,8 @@
 import UIKit
 import SnapKit
 import Photos
+import AVKit
+import AVFoundation
 import CropViewController
 
 class MainViewController: UIViewController {
@@ -15,16 +17,33 @@ class MainViewController: UIViewController {
     // MARK: - Private UI elements
     private let instagramView = InstagramView().after{
         $0.isHidden = true
+        $0.layer.zPosition = 1
     }
     private let tikTokView = TikTokView().after{
-        $0.isHidden = false
-        $0.layer.zPosition = 0
+        $0.isHidden = true
+        $0.layer.zPosition = 1
     }
     private let youTubeView = YouTubeView().after{
-        $0.isHidden = true
+        $0.isHidden = false
+        $0.layer.zPosition = 1
     }
     private let snapchatView = SnapchatView().after{
         $0.isHidden = true
+        $0.layer.zPosition = 1
+    }
+    private let imageView = UIImageView().after {
+        $0.contentMode = .scaleAspectFit
+        $0.clipsToBounds = true
+        $0.backgroundColor = .black
+        $0.layer.cornerRadius = 16.0
+        $0.layer.zPosition = 0
+    }
+    private let videoContainerView = UIView().after {
+        $0.isUserInteractionEnabled = false
+        $0.backgroundColor = .black
+        $0.layer.cornerRadius = 16.0
+        $0.layer.zPosition = 0
+        $0.clipsToBounds = true
     }
     private let markLabel = UILabel().after {
         $0.layer.zPosition = 1
@@ -38,7 +57,7 @@ class MainViewController: UIViewController {
     private let socialMediaView = CustomView()
     private lazy var socialMediaSegment: UISegmentedControl = createSegmentedControl(
         items: ["Instagram", "TikTok", "YouTube", "Snapchat"],
-        selectedIndex: 1,
+        selectedIndex: 2,
         target: self,
         action: #selector(mediaSegmentChanged),
         backgroundColor: UIColor.black.withAlphaComponent(0.5),
@@ -122,6 +141,10 @@ class MainViewController: UIViewController {
         return button
     }()
     
+    //MARK: - Private variebles
+    private var player: AVPlayer?
+    private var playerLayer: AVPlayerLayer?
+    
     // MARK: - Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -138,9 +161,7 @@ private extension MainViewController {
     func setupSubviews() {
         view.backgroundColor = UIColor(hex: "#18191b")
         proLabel.isHidden = true
-//        watermarkSwitch.isHidden = true
-        tikTokView.addSubview(markLabel)
-        [instagramView, tikTokView, youTubeView, snapchatView, exportView, editButton, exportButton].forEach {
+        [instagramView, tikTokView, youTubeView, snapchatView, imageView, videoContainerView, exportView, editButton, exportButton, markLabel].forEach {
             view.addSubview($0)
         }
         [socialMediaView, qualityView, watermarkView, sizeLabel].forEach {
@@ -156,22 +177,39 @@ private extension MainViewController {
     func setupConstraints() {
         instagramView.snp.makeConstraints {
             $0.top.right.left.equalToSuperview().inset(16.0)
-            $0.bottom.equalTo(exportView.snp.top).inset(-16.0)
+            $0.bottom.equalTo(tikTokView.snp.bottom)
         }
         tikTokView.snp.makeConstraints {
-            $0.top.right.left.equalToSuperview().inset(16.0)
-            $0.bottom.equalTo(exportView.snp.top).inset(-16.0)
+            $0.width.equalTo(234.0)
+            $0.height.equalTo(416.0)
+            $0.top.equalTo(imageView.snp.top)
+            $0.centerX.equalTo(imageView.snp.centerX)
         }
         markLabel.snp.makeConstraints {
-            $0.centerX.centerY.equalToSuperview()
+            $0.centerY.equalTo(tikTokView.snp.centerY)
+            $0.centerX.equalToSuperview()
         }
         youTubeView.snp.makeConstraints {
-            $0.top.right.left.equalToSuperview().inset(16.0)
-            $0.bottom.equalTo(exportView.snp.top).inset(-16.0)
+            $0.width.equalTo(tikTokView.snp.width)
+            $0.height.equalTo(tikTokView.snp.height)
+            $0.top.equalTo(imageView.snp.top)
+            $0.centerX.equalTo(imageView.snp.centerX)
         }
         snapchatView.snp.makeConstraints {
             $0.top.right.left.equalToSuperview().inset(16.0)
-            $0.bottom.equalTo(exportView.snp.top).inset(-16.0)
+            $0.bottom.equalTo(tikTokView.snp.bottom)
+        }
+        imageView.snp.makeConstraints{
+            $0.width.equalTo(234.0)
+            $0.height.equalTo(416.0)
+            $0.centerX.equalToSuperview()
+            $0.top.equalToSuperview().inset(52.0)
+        }
+        videoContainerView.snp.makeConstraints{
+            $0.width.equalTo(234.0)
+            $0.height.equalTo(416.0)
+            $0.centerX.equalToSuperview()
+            $0.top.equalToSuperview().inset(52.0)
         }
         exportView.snp.makeConstraints {
             $0.height.equalTo(250.0)
@@ -231,24 +269,24 @@ private extension MainViewController {
     }
     
     func createSegmentedControl(items: [String], selectedIndex: Int, target: Any?, action: Selector, backgroundColor: UIColor, tintColor: UIColor, separatorColorHex: String, fontSize: CGFloat = 16.0) -> UISegmentedControl {
-            let segmentControl = UISegmentedControl(items: items)
-            segmentControl.selectedSegmentIndex = selectedIndex
-            segmentControl.selectedSegmentTintColor = tintColor
-            segmentControl.backgroundColor = backgroundColor
-            segmentControl.addTarget(target, action: action, for: .valueChanged)
-            
-            let titleTextAttributes: [NSAttributedString.Key: Any] = [
-                .foregroundColor: UIColor.white,
-                .font: UIFont(name: "Inter-SemiBold", size: fontSize) ?? UIFont.systemFont(ofSize: fontSize)
-            ]
-            UISegmentedControl.appearance().setTitleTextAttributes(titleTextAttributes, for: .normal)
-            
-            let separator = UIColor(hex: separatorColorHex).image()
-            segmentControl.setDividerImage(separator, forLeftSegmentState: .normal, rightSegmentState: .normal, barMetrics: .default)
-            segmentControl.layer.shadowColor = UIColor(hex: "#18191b").cgColor
-            
-            return segmentControl
-        }
+        let segmentControl = UISegmentedControl(items: items)
+        segmentControl.selectedSegmentIndex = selectedIndex
+        segmentControl.selectedSegmentTintColor = tintColor
+        segmentControl.backgroundColor = backgroundColor
+        segmentControl.addTarget(target, action: action, for: .valueChanged)
+        
+        let titleTextAttributes: [NSAttributedString.Key: Any] = [
+            .foregroundColor: UIColor.white,
+            .font: UIFont(name: "Inter-SemiBold", size: fontSize) ?? UIFont.systemFont(ofSize: fontSize)
+        ]
+        UISegmentedControl.appearance().setTitleTextAttributes(titleTextAttributes, for: .normal)
+        
+        let separator = UIColor(hex: separatorColorHex).image()
+        segmentControl.setDividerImage(separator, forLeftSegmentState: .normal, rightSegmentState: .normal, barMetrics: .default)
+        segmentControl.layer.shadowColor = UIColor(hex: "#18191b").cgColor
+        
+        return segmentControl
+    }
     
     func addImagesToSegments() {
         let images = ["mingcute_ins-line", "mingcute_tiktok-line", "mingcute_youtube-line", "mingcute_snapchat-line"]
@@ -276,6 +314,34 @@ private extension MainViewController {
         self.present(vc, animated: true, completion: nil)
     }
     
+    func showImage(image: UIImage) {
+        let imageView = UIImageView(image: image)
+        imageView.frame = view.bounds
+        imageView.contentMode = .scaleAspectFit
+        view.addSubview(imageView)
+    }
+    
+    func showVideo(url: URL) {
+        let playerItem = AVPlayerItem(url: url)
+        player = AVPlayer(playerItem: playerItem)
+        playerLayer = AVPlayerLayer(player: player)
+        
+        playerLayer?.frame = videoContainerView.bounds
+        playerLayer?.videoGravity = .resizeAspect
+        
+        videoContainerView.layer.sublayers?.forEach { $0.removeFromSuperlayer() }
+        videoContainerView.layer.addSublayer(playerLayer!)
+        
+        player?.play()
+        
+        NotificationCenter.default.addObserver(
+                self,
+                selector: #selector(playerDidFinishPlaying),
+                name: .AVPlayerItemDidPlayToEndTime,
+                object: playerItem
+            )
+    }
+
     func showCrop(image: UIImage) {
         let vc = CropViewController(croppingStyle: .default, image: image)
         vc.aspectRatioPreset = .presetCustom
@@ -295,9 +361,19 @@ private extension MainViewController {
 extension MainViewController: UIImagePickerControllerDelegate, UINavigationControllerDelegate {
     
     func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
-        guard let image = info[.originalImage] as? UIImage else { return }
-        picker.dismiss(animated: true, completion: nil)
-        showCrop(image: image)
+        if let mediaType = info[.mediaType] as? String {
+                if mediaType == "public.image", let image = info[.originalImage] as? UIImage {
+                    imageView.isHidden = false
+                    videoContainerView.isHidden = true
+                    picker.dismiss(animated: true, completion: nil)
+                    showCrop(image: image)
+                } else if mediaType == "public.movie", let videoURL = info[.mediaURL] as? URL {
+                    showVideo(url: videoURL)
+                    videoContainerView.isHidden = false
+                    imageView.isHidden = true
+                    picker.dismiss(animated: true, completion: nil)
+                }
+            }
     }
     
     func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
@@ -313,7 +389,7 @@ extension MainViewController: CropViewControllerDelegate {
     }
     
     func cropViewController(_ cropViewController: CropViewController, didCropToImage image: UIImage, withRect cropRect: CGRect, angle: Int) {
-        self.tikTokView.displayImage(image)
+        imageView.image = image
         cropViewController.dismiss(animated: true)
     }
 }
@@ -321,6 +397,11 @@ extension MainViewController: CropViewControllerDelegate {
 // MARK: - Private Objc-C method's
 @objc private extension MainViewController {
     
+    func playerDidFinishPlaying() {
+        player?.seek(to: CMTime.zero)
+        player?.play()
+    }
+
     func editBtnTapped() {
         PHPhotoLibrary.requestAuthorization { status in
             switch status {
@@ -346,22 +427,24 @@ extension MainViewController: CropViewControllerDelegate {
         switch sender.selectedSegmentIndex {
         case 0:
             instagramView.isHidden = false
-            [tikTokView,youTubeView,snapchatView].forEach {
+            [markLabel, tikTokView, youTubeView, snapchatView].forEach {
                 $0.isHidden = true
             }
         case 1:
             tikTokView.isHidden = false
-            [instagramView,youTubeView,snapchatView].forEach {
+            markLabel.isHidden = false
+            [instagramView, youTubeView, snapchatView].forEach {
                 $0.isHidden = true
             }
         case 2:
             youTubeView.isHidden = false
-            [instagramView,tikTokView,snapchatView].forEach {
+            markLabel.isHidden = false
+            [instagramView, tikTokView, snapchatView].forEach {
                 $0.isHidden = true
             }
         case 3:
             snapchatView.isHidden = false
-            [tikTokView,youTubeView,instagramView].forEach {
+            [markLabel, tikTokView, youTubeView, instagramView].forEach {
                 $0.isHidden = true
             }
         default:
