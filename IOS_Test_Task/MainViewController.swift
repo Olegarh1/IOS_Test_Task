@@ -8,6 +8,7 @@
 import UIKit
 import SnapKit
 import Photos
+import CropViewController
 
 class MainViewController: UIViewController {
     
@@ -35,42 +36,25 @@ class MainViewController: UIViewController {
     }
     private let exportView = UIView()
     private let socialMediaView = CustomView()
-    private lazy var socialMediaSegment: UISegmentedControl = {
-        let segmentControl = UISegmentedControl(items: ["Instagram", "TikTok", "YouTube", "Snapchat"])
-        let titleTextAttributes = [NSAttributedString.Key.foregroundColor: UIColor.white]
-        UISegmentedControl.appearance().setTitleTextAttributes(titleTextAttributes, for: .normal)
-        
-        segmentControl.selectedSegmentIndex = 1
-        segmentControl.addTarget(self, action: #selector(mediaSegmentChanged), for: .valueChanged)
-        segmentControl.selectedSegmentTintColor = UIColor(hex: "#33343A")
-        segmentControl.translatesAutoresizingMaskIntoConstraints = false
-        segmentControl.backgroundColor = UIColor.black.withAlphaComponent(0.5)
-        let separator = UIColor(hex: "#18191b").image()
-        segmentControl.setDividerImage(separator, forLeftSegmentState: .normal, rightSegmentState: .normal, barMetrics: .default)
-        segmentControl.layer.shadowColor = UIColor(hex: "#18191b").cgColor
-        
-        return segmentControl
-    }()
+    private lazy var socialMediaSegment: UISegmentedControl = createSegmentedControl(
+        items: ["Instagram", "TikTok", "YouTube", "Snapchat"],
+        selectedIndex: 1,
+        target: self,
+        action: #selector(mediaSegmentChanged),
+        backgroundColor: UIColor.black.withAlphaComponent(0.5),
+        tintColor: UIColor(hex: "#33343A"),
+        separatorColorHex: "#18191b"
+    )
     private let qualityView = CustomView()
-    private lazy var qualitySegment: UISegmentedControl = {
-        let segmentControl = UISegmentedControl(items: ["Standart", "HD", "4K"])
-        let titleTextAttributes = [
-            NSAttributedString.Key.foregroundColor: UIColor.white,
-            NSAttributedString.Key.font: UIFont(name: "Inter-SemiBold", size: 16.0)
-        ]
-        UISegmentedControl.appearance().setTitleTextAttributes(titleTextAttributes as [NSAttributedString.Key : Any], for: .normal)
-        
-        segmentControl.selectedSegmentIndex = 0
-        segmentControl.addTarget(self, action: #selector(qualitySegmentChanged), for: .valueChanged)
-        segmentControl.selectedSegmentTintColor = UIColor(hex: "#33343A")
-        segmentControl.translatesAutoresizingMaskIntoConstraints = false
-        segmentControl.backgroundColor = UIColor.black.withAlphaComponent(0.5)
-        let separator = UIColor(hex: "#18191b").image()
-        segmentControl.setDividerImage(separator, forLeftSegmentState: .normal, rightSegmentState: .normal, barMetrics: .default)
-        segmentControl.layer.shadowColor = UIColor(hex: "#18191b").cgColor
-        
-        return segmentControl
-    }()
+    private lazy var qualitySegment: UISegmentedControl = createSegmentedControl(
+        items: ["Standart", "HD", "4K"],
+        selectedIndex: 0,
+        target: self,
+        action: #selector(qualitySegmentChanged),
+        backgroundColor: UIColor.black.withAlphaComponent(0.5),
+        tintColor: UIColor(hex: "#33343A"),
+        separatorColorHex: "#18191b"
+    )
     private let proLabel = ProLabel()
     private let watermarkView = CustomView()
     private let watermarkLabel = UILabel().after {
@@ -246,6 +230,26 @@ private extension MainViewController {
         }
     }
     
+    func createSegmentedControl(items: [String], selectedIndex: Int, target: Any?, action: Selector, backgroundColor: UIColor, tintColor: UIColor, separatorColorHex: String, fontSize: CGFloat = 16.0) -> UISegmentedControl {
+            let segmentControl = UISegmentedControl(items: items)
+            segmentControl.selectedSegmentIndex = selectedIndex
+            segmentControl.selectedSegmentTintColor = tintColor
+            segmentControl.backgroundColor = backgroundColor
+            segmentControl.addTarget(target, action: action, for: .valueChanged)
+            
+            let titleTextAttributes: [NSAttributedString.Key: Any] = [
+                .foregroundColor: UIColor.white,
+                .font: UIFont(name: "Inter-SemiBold", size: fontSize) ?? UIFont.systemFont(ofSize: fontSize)
+            ]
+            UISegmentedControl.appearance().setTitleTextAttributes(titleTextAttributes, for: .normal)
+            
+            let separator = UIColor(hex: separatorColorHex).image()
+            segmentControl.setDividerImage(separator, forLeftSegmentState: .normal, rightSegmentState: .normal, barMetrics: .default)
+            segmentControl.layer.shadowColor = UIColor(hex: "#18191b").cgColor
+            
+            return segmentControl
+        }
+    
     func addImagesToSegments() {
         let images = ["mingcute_ins-line", "mingcute_tiktok-line", "mingcute_youtube-line", "mingcute_snapchat-line"]
         for index in 0...images.count - 1{
@@ -263,14 +267,27 @@ private extension MainViewController {
         }
         socialMediaSegment.tintColor = .white
     }
-    
+
     func presentImagePicker() {
         let vc = UIImagePickerController()
         vc.sourceType = .photoLibrary
         vc.delegate = self
-        vc.allowsEditing = true
         vc.mediaTypes = ["public.image", "public.movie"]
         self.present(vc, animated: true, completion: nil)
+    }
+    
+    func showCrop(image: UIImage) {
+        let vc = CropViewController(croppingStyle: .default, image: image)
+        vc.aspectRatioPreset = .presetCustom
+        vc.customAspectRatio = CGSize(width: 9, height: 16)
+        vc.aspectRatioLockEnabled = true
+        vc.aspectRatioPickerButtonHidden = true
+        vc.resetAspectRatioEnabled = false
+        vc.toolbarPosition = .bottom
+        vc.doneButtonTitle = "Continue"
+        vc.cancelButtonTitle = "Quit"
+        vc.delegate = self
+        present(vc, animated: true)
     }
 }
 
@@ -278,15 +295,26 @@ private extension MainViewController {
 extension MainViewController: UIImagePickerControllerDelegate, UINavigationControllerDelegate {
     
     func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
-        
-        if let image = info[UIImagePickerController.InfoKey(rawValue: "UIImagePickerControllerEditedImage")] as? UIImage {
-            self.tikTokView.displayImage(image)
-        }
+        guard let image = info[.originalImage] as? UIImage else { return }
         picker.dismiss(animated: true, completion: nil)
+        showCrop(image: image)
     }
     
     func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
         picker.dismiss(animated: true, completion: nil)
+    }
+}
+
+// MARK: - CropViewControllerDelegate
+extension MainViewController: CropViewControllerDelegate {
+    
+    func cropViewController(_ cropViewController: CropViewController, didFinishCancelled cancelled: Bool) {
+        cropViewController.dismiss(animated: true)
+    }
+    
+    func cropViewController(_ cropViewController: CropViewController, didCropToImage image: UIImage, withRect cropRect: CGRect, angle: Int) {
+        self.tikTokView.displayImage(image)
+        cropViewController.dismiss(animated: true)
     }
 }
 

@@ -8,6 +8,7 @@
 import UIKit
 import SnapKit
 import Photos
+import CropViewController
 
 final class TikTokView: UIView {
     
@@ -17,8 +18,7 @@ final class TikTokView: UIView {
         $0.clipsToBounds = true
         $0.backgroundColor = .black
         $0.layer.cornerRadius = 16.0
-        //        $0.isHidden = true
-        $0.layer.zPosition = 0
+        $0.layer.zPosition = -1
     }
     private let avatarImageView = UIImageView().after {
         $0.contentMode = .scaleAspectFill
@@ -26,7 +26,6 @@ final class TikTokView: UIView {
         $0.backgroundColor = .clear
         $0.layer.cornerRadius = 18.0
         $0.isHidden = false
-        $0.layer.zPosition = 1
         
         if let image = UIImage(named: "avatar") {
             let resizedImage = ImageUtils.resizeImage(image: image, targetSize: CGSize(width: 36.0, height: 36.0))
@@ -41,65 +40,29 @@ final class TikTokView: UIView {
         borderLayer.masksToBounds = true
         $0.layer.addSublayer(borderLayer)
     }
-    private lazy var likeButton = UIButton().after{
-        
-        if let image = UIImage(named: "like") {
-            let resizedImage = ImageUtils.resizeImage(image: image, targetSize: CGSize(width: 24.0, height: 24.0))
-            $0.setImage(resizedImage.withRenderingMode(.alwaysTemplate), for: .normal)
-            $0.tintColor = .white
-        }
-        $0.addTarget(self, action: #selector(likeBtnTapped), for: .touchUpInside)
+    private lazy var subscribeButton = UIButton().after{
+        $0.setTitle("+", for: .normal)
+        $0.titleLabel?.font = UIFont(name: "Inter-Bold", size: 20.0)
+        $0.setTitleColor(.white, for: .normal)
+        $0.backgroundColor = .red
+        $0.layer.cornerRadius = 9.0
+        $0.translatesAutoresizingMaskIntoConstraints = false
+        $0.addTarget(self, action: #selector(subscribeBtnTapped), for: .touchUpInside)
     }
-    private let likeTextField = CountTextField().after {
-        $0.text = "250,5k"
-        $0.layer.zPosition = 1
-    }
-    private lazy var commentButton = UIButton().after{
-        
-        if let image = UIImage(named: "comment") {
-            let resizedImage = ImageUtils.resizeImage(image: image, targetSize: CGSize(width: 24.0, height: 24.0))
-            $0.setImage(resizedImage.withRenderingMode(.alwaysTemplate), for: .normal)
-            $0.tintColor = .white
-        }
-        $0.addTarget(self, action: #selector(commentBtnTapped), for: .touchUpInside)
-    }
-    private let commentTextField = CountTextField().after {
-        $0.text = "100k"
-        $0.layer.zPosition = 1
-    }
-    private lazy var savedButton = UIButton().after{
-        
-        if let image = UIImage(named: "save") {
-            let resizedImage = ImageUtils.resizeImage(image: image, targetSize: CGSize(width: 24.0, height: 24.0))
-            $0.setImage(resizedImage.withRenderingMode(.alwaysTemplate), for: .normal)
-            $0.tintColor = .white
-        }
-        $0.addTarget(self, action: #selector(savedBtnTapped), for: .touchUpInside)
-    }
-    private let savedTextField = CountTextField().after {
-        $0.text = "89k"
-        $0.layer.zPosition = 1
-    }
-    private lazy var repostButton = UIButton().after{
-        
-        if let image = UIImage(named: "repost") {
-            let resizedImage = ImageUtils.resizeImage(image: image, targetSize: CGSize(width: 24.0, height: 24.0))
-            $0.setImage(resizedImage.withRenderingMode(.alwaysTemplate), for: .normal)
-            $0.tintColor = .white
-        }
-        $0.addTarget(self, action: #selector(repostBtnTapped), for: .touchUpInside)
-    }
-    private let repostTextField = CountTextField().after {
-        $0.text = "132,5k"
-        $0.layer.zPosition = 1
-    }
+    private lazy var likeButton = createButton(imageName: "like", target: #selector(likeBtnTapped))
+    private lazy var likeTextField = createTextField(text: "250,5k")
+    private lazy var commentButton = createButton(imageName: "comment", target: #selector(commentBtnTapped))
+    private lazy var commentTextField = createTextField(text: "100k")
+    private lazy var savedButton = createButton(imageName: "save", target: #selector(savedBtnTapped))
+    private lazy var savedTextField = createTextField(text: "89k")
+    private lazy var repostButton = createButton(imageName: "repost", target: #selector(repostBtnTapped))
+    private lazy var repostTextField = createTextField(text: "132.5k")
     private let musicImageView = UIImageView().after {
         $0.contentMode = .scaleAspectFit
         $0.clipsToBounds = true
         $0.backgroundColor = .clear
         $0.layer.cornerRadius = 16.0
         $0.isHidden = false
-        $0.layer.zPosition = 1
         
         if let image = UIImage(named: "music") {
             let resizedImage = ImageUtils.resizeImage(image: image, targetSize: CGSize(width: 36.0, height: 36.0))
@@ -112,38 +75,40 @@ final class TikTokView: UIView {
         $0.textColor = .white
         $0.backgroundColor = .clear
         $0.textAlignment = .center
-        $0.layer.zPosition = 1
     }
-    private let captionTextField = UITextField().after {
+    private let captionTextView = UITextView().after {
         $0.text = "Caption of the post 😉"
-        $0.font = UIFont(name: "Inter-Regular", size: 10.0) ?? UIFont.systemFont(ofSize: 10.0)
+        $0.font = UIFont(name: "Inter-SemiBold", size: 10.0) ?? UIFont.systemFont(ofSize: 10.0)
         $0.textColor = .white
         $0.backgroundColor = .clear
         $0.textAlignment = .left
-        $0.layer.zPosition = 1
+        $0.isScrollEnabled = false
+        $0.textContainer.lineBreakMode = .byWordWrapping
+        $0.textContainerInset = .zero
     }
-    private let tagsTextField = UITextField().after {
+    private let tagsTextView = UITextView().after {
         $0.text = "#fyp"
         $0.font = UIFont(name: "Inter-SemiBold", size: 10.0) ?? UIFont.systemFont(ofSize: 10.0)
         $0.textColor = .white
         $0.backgroundColor = .clear
         $0.textAlignment = .left
-        $0.layer.zPosition = 1
+        $0.isScrollEnabled = false
+        $0.textContainer.lineBreakMode = .byWordWrapping
+        $0.textContainerInset = .zero
     }
     private let translateTextField = UITextField().after {
         $0.text = "Show translation"
         $0.font = UIFont(name: "Inter-Regular", size: 10.0) ?? UIFont.systemFont(ofSize: 10.0)
+        $0.isUserInteractionEnabled = false
         $0.textColor = .white
         $0.backgroundColor = .clear
         $0.textAlignment = .center
-        $0.layer.zPosition = 1
     }
     private let translateImageView = UIImageView().after {
         $0.contentMode = .scaleAspectFit
         $0.clipsToBounds = true
         $0.backgroundColor = .clear
         $0.isHidden = false
-        $0.layer.zPosition = 1
         
         if let image = UIImage(named: "translate") {
             let resizedImage = ImageUtils.resizeImage(image: image, targetSize: CGSize(width: 12.0, height: 12.0))
@@ -151,20 +116,12 @@ final class TikTokView: UIView {
             $0.tintColor = .white
         }
     }
-    private let songTextField = UITextField().after {
-        $0.text = "Song name - song artist"
-        $0.font = UIFont(name: "Inter-Regular", size: 10.0) ?? UIFont.systemFont(ofSize: 10.0)
-        $0.textColor = .white
-        $0.backgroundColor = .clear
-        $0.textAlignment = .left
-        $0.layer.zPosition = 1
-    }
+    private lazy var songTextField: UITextField = createTextField(text: "Song name - song artist")
     private let noteImageView = UIImageView().after {
         $0.contentMode = .scaleAspectFit
         $0.clipsToBounds = true
         $0.backgroundColor = .clear
         $0.isHidden = false
-        $0.layer.zPosition = 1
         
         if let image = UIImage(named: "note") {
             let resizedImage = ImageUtils.resizeImage(image: image, targetSize: CGSize(width: 12.0, height: 12.0))
@@ -203,22 +160,23 @@ final class TikTokView: UIView {
     func displayImage(_ image: UIImage) {
         imageView.image = image
         imageView.isHidden = false
-        likeTextField.isHidden = false
     }
 }
 
 private extension TikTokView {
     
     func setupSubviews() {
+        tagsTextView.delegate = self
+        captionTextView.delegate = self
         self.backgroundColor = UIColor(hex: "#18191b")
-        [imageView, avatarImageView, likeButton, likeTextField, commentButton, commentTextField, savedButton, savedTextField, repostButton, repostTextField, musicImageView, translateTextField, usernameTextField, captionTextField, tagsTextField, translateImageView, songTextField, noteImageView].forEach {
+        [imageView, avatarImageView, subscribeButton, likeButton, likeTextField, commentButton, commentTextField, savedButton, savedTextField, repostButton, repostTextField, musicImageView, translateTextField, usernameTextField, captionTextView, tagsTextView, translateImageView, songTextField, noteImageView].forEach {
             addSubview($0)
         }
     }
     
     func setupConstraints() {
         imageView.snp.makeConstraints {
-            $0.width.equalTo(282.0)
+            $0.width.equalTo(234.0)
             $0.height.equalTo(416.0)
             $0.centerX.equalToSuperview()
             $0.top.equalToSuperview().inset(36.0)
@@ -226,6 +184,11 @@ private extension TikTokView {
         avatarImageView.snp.makeConstraints {
             $0.bottom.equalTo(likeButton.snp.top).inset(-16.0)
             $0.centerX.equalTo(musicImageView.snp.centerX)
+        }
+        subscribeButton.snp.makeConstraints {
+            $0.width.height.equalTo(18.0)
+            $0.bottom.equalTo(avatarImageView.snp.bottom).inset(-9.0)
+            $0.centerX.equalTo(likeButton.snp.centerX)
         }
         likeButton.snp.makeConstraints {
             $0.bottom.equalTo(likeTextField.snp.top).inset(-8.0)
@@ -264,18 +227,18 @@ private extension TikTokView {
             $0.right.equalTo(imageView.snp.right).inset(16.0)
         }
         usernameTextField.snp.makeConstraints {
-            $0.bottom.equalTo(captionTextField.snp.top).inset(-8.0)
+            $0.bottom.equalTo(captionTextView.snp.top).inset(-8.0)
             $0.left.equalTo(translateImageView.snp.left)
         }
-        captionTextField.snp.makeConstraints {
-            $0.width.equalTo(tagsTextField.snp.width)
-            $0.bottom.equalTo(tagsTextField.snp.top).inset(-8.0)
-            $0.left.equalTo(translateImageView.snp.left)
+        captionTextView.snp.makeConstraints {
+            $0.width.equalTo(tagsTextView.snp.width)
+            $0.bottom.equalTo(tagsTextView.snp.top).inset(-8.0)
+            $0.left.equalTo(translateImageView.snp.left).inset(-4.0)
         }
-        tagsTextField.snp.makeConstraints {
+        tagsTextView.snp.makeConstraints {
             $0.width.equalTo(songTextField.snp.width)
             $0.bottom.equalTo(translateTextField.snp.top).inset(-8.0)
-            $0.left.equalTo(translateImageView.snp.left)
+            $0.left.equalTo(translateImageView.snp.left).inset(-4.0)
         }
         translateTextField.snp.makeConstraints {
             $0.centerY.equalTo(translateImageView.snp.centerY)
@@ -296,8 +259,28 @@ private extension TikTokView {
         }
     }
     
+    func createButton(imageName: String, target: Selector) -> UIButton {
+        let button = UIButton()
+        if let image = UIImage(named: imageName) {
+            let resizedImage = ImageUtils.resizeImage(image: image, targetSize: CGSize(width: 24.0, height: 24.0))
+            button.setImage(resizedImage.withRenderingMode(.alwaysTemplate), for: .normal)
+            button.tintColor = .white
+        }
+        button.addTarget(self, action: target, for: .touchUpInside)
+        return button
+    }
+
+    func createTextField(text: String, fontSize: CGFloat = 10.0, textColor: UIColor = .white, alignment: NSTextAlignment = .center) -> UITextField {
+            let textField = CountTextField()
+            textField.text = text
+            textField.font = UIFont(name: "Inter-Regular", size: fontSize) ?? UIFont.systemFont(ofSize: fontSize)
+            textField.textColor = textColor
+            textField.textAlignment = alignment
+            return textField
+        }
+    
     func setupTextFields() {
-        [likeTextField, commentTextField, savedTextField, repostTextField, usernameTextField, captionTextField, tagsTextField, translateTextField, songTextField].forEach{
+        [likeTextField, commentTextField, savedTextField, repostTextField, usernameTextField, songTextField].forEach{
             $0.delegate = self
         }
     }
@@ -311,13 +294,24 @@ private extension TikTokView {
     }
     
     func presentImagePicker() {
-        let vc = UIImagePickerController()
-        vc.sourceType = .photoLibrary
-        vc.delegate = self
-        vc.allowsEditing = true
-        vc.mediaTypes = ["public.image", "public.movie"]
+        let picker = UIImagePickerController()
+        picker.sourceType = .photoLibrary
+        picker.delegate = self
         if let parentVC = self.parentViewController {
-            parentVC.present(vc, animated: true, completion: nil)
+            parentVC.present(picker, animated: true)
+        }
+    }
+    
+    func showCrop(image: UIImage) {
+        let vc = CropViewController(croppingStyle: .circular, image: image)
+        vc.aspectRatioPreset = .presetSquare
+        vc.aspectRatioLockEnabled = true
+        vc.toolbarPosition = .bottom
+        vc.doneButtonTitle = "Continue"
+        vc.cancelButtonTitle = "Quit"
+        vc.delegate = self
+        if let parentVC = self.parentViewController {
+            parentVC.present(vc, animated: true)
         }
     }
 }
@@ -335,8 +329,6 @@ extension TikTokView: UITextFieldDelegate {
             savedTextField.text = "\(Int(saveds))"
         case repostTextField:
             repostTextField.text = "\(Int(reposts))"
-        case tagsTextField:
-            tagsTextField.text = "#"
         default:
             textField.text = ""
         }
@@ -360,26 +352,7 @@ extension TikTokView: UITextFieldDelegate {
             return updatedText.count <= 10
             
         case usernameTextField:
-            let currentText = textField.text ?? ""
-            guard let stringRange = Range(range, in: currentText) else { return false }
-            let updatedText = currentText.replacingCharacters(in: stringRange, with: string)
-            return updatedText.count <= 24
-            
-        case captionTextField:
-            let currentText = textField.text ?? ""
-            guard let stringRange = Range(range, in: currentText) else { return false }
-            let updatedText = currentText.replacingCharacters(in: stringRange, with: string)
-            return updatedText.count <= 240
-            
-        case tagsTextField:
-            let currentText = textField.text ?? ""
-            guard let stringRange = Range(range, in: currentText) else { return false }
-            let updatedText = currentText.replacingCharacters(in: stringRange, with: string)
-            
-            let tags = updatedText.components(separatedBy: " ").map { $0.trimmingCharacters(in: .whitespaces) }
-            
-            return tags.count <= 10
-            
+            return range.location < 24
         default:
             return true
         }
@@ -406,15 +379,40 @@ extension TikTokView: UITextFieldDelegate {
     }
 }
 
+// MARK: - UITextViewDelegate
+extension TikTokView: UITextViewDelegate {
+    
+    func textView(_ textView: UITextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
+        switch textView {
+        case tagsTextView:
+            let currentText = textView.text ?? ""
+            let newText = (currentText as NSString).replacingCharacters(in: range, with: text)
+            let newTags = newText.split { $0 == " " || $0 == "\n" }.map { String($0) }
+            
+            if !newText.hasPrefix("#") {
+                textView.text = "#" + newText
+                return false
+            } else if newTags.count > 10 {
+                return false
+            }
+            
+            return true
+        case captionTextView:
+            //TODO: - ...more and ...less
+            return range.location < 240
+        default:
+            return true
+        }
+    }
+}
+
 // MARK: - UIImagePickerControllerDelegate, UINavigationControllerDelegate
 extension TikTokView: UIImagePickerControllerDelegate, UINavigationControllerDelegate {
     
     func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
-        
-        if let image = info[UIImagePickerController.InfoKey(rawValue: "UIImagePickerControllerEditedImage")] as? UIImage {
-            avatarImageView.image = image
-        }
+        guard let image = info[.originalImage] as? UIImage else { return }
         picker.dismiss(animated: true, completion: nil)
+        showCrop(image: image)
     }
     
     func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
@@ -422,8 +420,28 @@ extension TikTokView: UIImagePickerControllerDelegate, UINavigationControllerDel
     }
 }
 
+// MARK: - CropViewControllerDelegate
+extension TikTokView: CropViewControllerDelegate {
+    
+    func cropViewController(_ cropViewController: CropViewController, didFinishCancelled cancelled: Bool) {
+        cropViewController.dismiss(animated: true)
+    }
+    
+    func cropViewController(_ cropViewController: CropViewController, didCropToImage image: UIImage, withRect cropRect: CGRect, angle: Int) {
+        let resizedImage = ImageUtils.resizeImage(image: image, targetSize: CGSize(width: 36.0, height: 36.0))
+        avatarImageView.image = resizedImage
+        avatarImageView.layer.cornerRadius = avatarImageView.frame.size.width / 2
+        avatarImageView.layer.masksToBounds = true
+        cropViewController.dismiss(animated: true)
+    }
+}
+
 // MARK: - Private Objc-C methods
 @objc private extension TikTokView {
+    
+    func subscribeBtnTapped() {
+        subscribeButton.isHidden = true
+    }
     
     func avatarTapped() {
         self.presentImagePicker()
@@ -431,26 +449,34 @@ extension TikTokView: UIImagePickerControllerDelegate, UINavigationControllerDel
     
     func likeBtnTapped() {
         likeButton.tintColor = isLiked ? .white : .red
+        likes += isLiked ? -1 : 1
+        likeTextField.text = likes.formatNumber()
         isLiked.toggle()
     }
     
     func commentBtnTapped() {
         commentButton.tintColor = isCommented ? .white : .darkGray
+        comments += isCommented ?  -1 : 1
+        commentTextField.text = comments.formatNumber()
         isCommented.toggle()
     }
     
     func savedBtnTapped() {
         savedButton.tintColor = isSaved ? .white : .yellow
+        saveds += isSaved ?  -1 : 1
+        savedTextField.text = saveds.formatNumber()
         isSaved.toggle()
     }
     
     func repostBtnTapped() {
         repostButton.tintColor = isReposted ? .white : .darkGray
+        reposts += isReposted ?  -1 : 1
+        repostTextField.text = reposts.formatNumber()
         isReposted.toggle()
     }
     
     func hideKeyboard() {
-        [likeTextField, commentTextField, savedTextField, repostTextField, usernameTextField, captionTextField, tagsTextField, translateTextField, songTextField].forEach{
+        [likeTextField, commentTextField, savedTextField, repostTextField, usernameTextField, captionTextView, tagsTextView, songTextField].forEach{
             $0.resignFirstResponder()
         }
     }
