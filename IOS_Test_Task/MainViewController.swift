@@ -24,7 +24,7 @@ class MainViewController: UIViewController {
         $0.layer.zPosition = 1
     }
     private let youTubeView = YouTubeView().after{
-        $0.isHidden = false
+        $0.isHidden = true
         $0.layer.zPosition = 1
     }
     private let snapchatView = SnapchatView().after{
@@ -47,9 +47,9 @@ class MainViewController: UIViewController {
     }
     private let markLabel = UILabel().after {
         $0.layer.zPosition = 1
-        $0.text = "Watermark"
+        $0.text = "Choose your media"
         $0.textColor = .red
-        $0.font = UIFont(name: "Inter-SemiBold", size: 36.0)
+        $0.font = UIFont(name: "Inter-SemiBold", size: 32.0)
         $0.alpha = 0.5
         $0.transform = CGAffineTransform(rotationAngle: -45 * .pi / 180)
     }
@@ -64,16 +64,7 @@ class MainViewController: UIViewController {
         tintColor: UIColor(hex: "#33343A"),
         separatorColorHex: "#18191b"
     )
-    private let qualityView = CustomView()
-    private lazy var qualitySegment: UISegmentedControl = createSegmentedControl(
-        items: ["Standart", "HD", "4K"],
-        selectedIndex: 0,
-        target: self,
-        action: #selector(qualitySegmentChanged),
-        backgroundColor: UIColor.black.withAlphaComponent(0.5),
-        tintColor: UIColor(hex: "#33343A"),
-        separatorColorHex: "#18191b"
-    )
+    private lazy var qualitySegment = SegmentedControl()
     private let proLabel = ProLabel()
     private let watermarkView = CustomView()
     private let watermarkLabel = UILabel().after {
@@ -88,7 +79,7 @@ class MainViewController: UIViewController {
         $0.thumbTintColor = UIColor(hex: "#64656D")
     }
     private var sizeLabel = UILabel().after {
-        $0.text = "Estimated File Size: 24.5 MB"
+        $0.text = ""
         $0.font = UIFont(name: "Inter-Medium", size: 13.0)
         $0.textColor = UIColor(hex: "#727479")
     }
@@ -137,6 +128,8 @@ class MainViewController: UIViewController {
         
         button.startColor = UIColor(hex: "#0086E0")
         button.endColor = UIColor(hex: "#0071BD")
+        button.isEnabled = false
+        button.addTarget(self, action: #selector(exportButtonTapped), for: .touchUpInside)
         
         return button
     }()
@@ -144,6 +137,12 @@ class MainViewController: UIViewController {
     //MARK: - Private variebles
     private var player: AVPlayer?
     private var playerLayer: AVPlayerLayer?
+    private var videoURL: URL?
+    private var isMediaSelected: Bool = false {
+        didSet {
+            updateViewVisibility()
+        }
+    }
     
     // MARK: - Lifecycle
     override func viewDidLoad() {
@@ -152,6 +151,7 @@ class MainViewController: UIViewController {
         addImagesToSegments()
         setupSubviews()
         setupConstraints()
+        qualitySegment.updateSubscriptionStatus(isSubscribed: false)
     }
 }
 
@@ -164,14 +164,13 @@ private extension MainViewController {
         [instagramView, tikTokView, youTubeView, snapchatView, imageView, videoContainerView, exportView, editButton, exportButton, markLabel].forEach {
             view.addSubview($0)
         }
-        [socialMediaView, qualityView, watermarkView, sizeLabel].forEach {
+        [socialMediaView, qualitySegment, watermarkView, sizeLabel].forEach {
             exportView.addSubview($0)
         }
         socialMediaView.addSubview(socialMediaSegment)
         watermarkView.addSubview(watermarkLabel)
         watermarkView.addSubview(watermarkSwitch)
         watermarkView.addSubview(proLabel)
-        qualityView.addSubview(qualitySegment)
     }
     
     func setupConstraints() {
@@ -223,16 +222,13 @@ private extension MainViewController {
         socialMediaSegment.snp.makeConstraints {
             $0.edges.equalToSuperview().inset(8.0)
         }
-        qualityView.snp.makeConstraints {
+        qualitySegment.snp.makeConstraints {
             $0.top.equalTo(socialMediaView.snp.bottom).inset(-8.0)
             $0.left.right.equalToSuperview()
             $0.height.equalTo(socialMediaView.snp.height)
         }
-        qualitySegment.snp.makeConstraints {
-            $0.edges.equalToSuperview().inset(8.0)
-        }
         watermarkView.snp.makeConstraints {
-            $0.top.equalTo(qualityView.snp.bottom).inset(-8.0)
+            $0.top.equalTo(qualitySegment.snp.bottom).inset(-8.0)
             $0.left.right.equalToSuperview()
             $0.height.equalTo(socialMediaView.snp.height)
         }
@@ -314,14 +310,8 @@ private extension MainViewController {
         self.present(vc, animated: true, completion: nil)
     }
     
-    func showImage(image: UIImage) {
-        let imageView = UIImageView(image: image)
-        imageView.frame = view.bounds
-        imageView.contentMode = .scaleAspectFit
-        view.addSubview(imageView)
-    }
-    
     func showVideo(url: URL) {
+        videoURL = url
         let playerItem = AVPlayerItem(url: url)
         player = AVPlayer(playerItem: playerItem)
         playerLayer = AVPlayerLayer(player: player)
@@ -333,6 +323,7 @@ private extension MainViewController {
         videoContainerView.layer.addSublayer(playerLayer!)
         
         player?.play()
+        updateSizeLabelForMedia(mediaURL: url)
         
         NotificationCenter.default.addObserver(
                 self,
@@ -355,6 +346,58 @@ private extension MainViewController {
         vc.delegate = self
         present(vc, animated: true)
     }
+    
+    func updateSizeLabelForMedia(mediaURL: URL?) {
+        guard let mediaURL = mediaURL else { return }
+        do {
+            let fileAttributes = try FileManager.default.attributesOfItem(atPath: mediaURL.path)
+            if let fileSize = fileAttributes[FileAttributeKey.size] as? Int64 {
+                let fileSizeInMB = Double(fileSize) / (1024.0 * 1024.0)
+                sizeLabel.text = String(format: "Estimated File Size: %.2f MB", fileSizeInMB)
+            }
+        } catch {
+            print("Error getting file size: \(error.localizedDescription)")
+        }
+    }
+
+    func updateSizeLabelForImage(image: UIImage) {
+        if let imageData = image.jpegData(compressionQuality: 1.0) {
+            let imageSizeInMB = Double(imageData.count) / (1024.0 * 1024.0)
+            sizeLabel.text = String(format: "Estimated File Size: %.2f MB", imageSizeInMB)
+        }
+    }
+    
+    func updateViewVisibility() {
+        let selectedIndex = socialMediaSegment.selectedSegmentIndex
+        [instagramView, tikTokView, youTubeView, snapchatView].enumerated().forEach { index, view in
+            view.isHidden = index != selectedIndex || !isMediaSelected
+        }
+        markLabel.text = "Watermark"
+        exportButton.isEnabled = isMediaSelected
+    }
+    
+    func saveImage() {
+        guard let _ = imageView.image else {
+            print("No image to export.")
+            return
+        }
+        
+        let components = [instagramView, tikTokView, youTubeView, snapchatView, markLabel]
+        components.forEach {
+            $0.frame = imageView.bounds
+            imageView.addSubview($0)
+        }
+        
+        UIGraphicsBeginImageContextWithOptions(imageView.bounds.size, false, 0.0)
+        imageView.layer.render(in: UIGraphicsGetCurrentContext()!)
+        
+        let exportedImage = UIGraphicsGetImageFromCurrentImageContext()
+        UIGraphicsEndImageContext()
+        
+        if let finalImage = exportedImage {
+            UIImageWriteToSavedPhotosAlbum(finalImage, self, #selector(image(_:didFinishSavingWithError:contextInfo:)), nil)
+        }
+    }
 }
 
 // MARK: - UIImagePickerControllerDelegate, UINavigationControllerDelegate
@@ -369,6 +412,7 @@ extension MainViewController: UIImagePickerControllerDelegate, UINavigationContr
                     showCrop(image: image)
                 } else if mediaType == "public.movie", let videoURL = info[.mediaURL] as? URL {
                     showVideo(url: videoURL)
+                    isMediaSelected = true
                     videoContainerView.isHidden = false
                     imageView.isHidden = true
                     picker.dismiss(animated: true, completion: nil)
@@ -390,12 +434,31 @@ extension MainViewController: CropViewControllerDelegate {
     
     func cropViewController(_ cropViewController: CropViewController, didCropToImage image: UIImage, withRect cropRect: CGRect, angle: Int) {
         imageView.image = image
+        isMediaSelected = true
+        updateSizeLabelForImage(image: image)
         cropViewController.dismiss(animated: true)
     }
 }
 
 // MARK: - Private Objc-C method's
 @objc private extension MainViewController {
+    
+    func exportButtonTapped(_ sender: UIButton) {
+                saveImage()
+    }
+    
+    func image(_ image: UIImage, didFinishSavingWithError error: Error?, contextInfo: UnsafeRawPointer) {
+        let alert: UIAlertController
+        
+        if let error = error {
+            alert = UIAlertController(title: "Error", message: error.localizedDescription, preferredStyle: .alert)
+        } else {
+            alert = UIAlertController(title: "Success", message: "The image successfully saved.", preferredStyle: .alert)
+        }
+        
+        alert.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
+        present(alert, animated: true, completion: nil)
+    }
     
     func playerDidFinishPlaying() {
         player?.seek(to: CMTime.zero)
@@ -421,34 +484,12 @@ extension MainViewController: CropViewControllerDelegate {
         }
     }
     
-    func qualitySegmentChanged() {}
-    
     func mediaSegmentChanged(sender: UISegmentedControl) {
-        switch sender.selectedSegmentIndex {
-        case 0:
-            instagramView.isHidden = false
-            [markLabel, tikTokView, youTubeView, snapchatView].forEach {
-                $0.isHidden = true
+        if isMediaSelected {
+            let selectedIndex = socialMediaSegment.selectedSegmentIndex
+            [instagramView, tikTokView, youTubeView, snapchatView].enumerated().forEach { index, view in
+                view.isHidden = index != selectedIndex || !isMediaSelected
             }
-        case 1:
-            tikTokView.isHidden = false
-            markLabel.isHidden = false
-            [instagramView, youTubeView, snapchatView].forEach {
-                $0.isHidden = true
-            }
-        case 2:
-            youTubeView.isHidden = false
-            markLabel.isHidden = false
-            [instagramView, tikTokView, snapchatView].forEach {
-                $0.isHidden = true
-            }
-        case 3:
-            snapchatView.isHidden = false
-            [markLabel, tikTokView, youTubeView, instagramView].forEach {
-                $0.isHidden = true
-            }
-        default:
-            return
         }
     }
     
