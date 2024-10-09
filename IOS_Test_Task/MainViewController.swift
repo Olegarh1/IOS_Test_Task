@@ -11,6 +11,11 @@ import Photos
 import AVKit
 import AVFoundation
 import CropViewController
+import KeychainAccess
+
+protocol SegmentedControlDelegate: AnyObject {
+    func updateTrialMode(_ value: Int)
+}
 
 class MainViewController: UIViewController {
     
@@ -65,7 +70,17 @@ class MainViewController: UIViewController {
         separatorColorHex: "#18191b"
     )
     private lazy var qualitySegment = SegmentedControl()
-    private let proLabel = ProLabel()
+    private lazy var proButton: UIButton = {
+        let button = UIButton()
+        
+        if let image = UIImage(named: "PRO") {
+            let resizedImage = ImageUtils.resizeImage(image: image, targetSize: CGSize(width: 36.0, height: 36.0))
+            button.setImage(resizedImage, for: .normal)
+            button.semanticContentAttribute = .forceRightToLeft
+        }
+        button.addTarget(self, action: #selector(proBtnTapped), for: .touchUpInside)
+        return button
+    }()
     private let watermarkView = CustomView()
     private let watermarkLabel = UILabel().after {
         $0.text = "Remove Watermark"
@@ -83,61 +98,20 @@ class MainViewController: UIViewController {
         $0.font = UIFont(name: "Inter-Medium", size: 13.0)
         $0.textColor = UIColor(hex: "#727479")
     }
-    private lazy var editButton: UIButton = {
-        let button = UIButton()
-        
-        if let image = UIImage(named: "edit") {
-            let resizedImage = ImageUtils.resizeImage(image: image, targetSize: CGSize(width: 24.0, height: 24.0))
-            button.setImage(resizedImage.withRenderingMode(.alwaysTemplate), for: .normal)
-            button.tintColor = .white
-        }
-        
-        var configuration = UIButton.Configuration.filled()
-        var container = AttributeContainer()
-        container.font = UIFont(name: "Inter-SemiBold", size: 20.0)
-        configuration.attributedTitle = AttributedString("Edit", attributes: container)
-        configuration.imagePlacement = .leading
-        configuration.imagePadding = 8.0
-        configuration.baseBackgroundColor = UIColor(hex: "#33343A")
-        configuration.baseForegroundColor = .white
-        configuration.background.cornerRadius = 27.0
-        button.configuration = configuration
-        button.addTarget(self, action: #selector(editBtnTapped), for: .touchUpInside)
-        
-        return button
-    }()
-    private lazy var exportButton: UIButton = {
-        let button = GradientButton()
-        
-        if let image = UIImage(named: "download") {
-            let resizedImage = ImageUtils.resizeImage(image: image, targetSize: CGSize(width: 24.0, height: 24.0))
-            button.setImage(resizedImage.withRenderingMode(.alwaysTemplate), for: .normal)
-            button.tintColor = .white
-        }
-        
-        var configuration = UIButton.Configuration.filled()
-        var container = AttributeContainer()
-        container.font = UIFont(name: "Inter-SemiBold", size: 20.0)
-        configuration.attributedTitle = AttributedString("Export", attributes: container)
-        configuration.imagePlacement = .leading
-        configuration.imagePadding = 8.0
-        configuration.background.backgroundColor = .clear
-        configuration.baseForegroundColor = .white
-        configuration.background.cornerRadius = 27.0
-        button.configuration = configuration
-        
-        button.startColor = UIColor(hex: "#0086E0")
-        button.endColor = UIColor(hex: "#0071BD")
-        button.isEnabled = false
-        button.addTarget(self, action: #selector(exportButtonTapped), for: .touchUpInside)
-        
-        return button
-    }()
+    private lazy var editButton = createButton(image: "edit", title: "Edit", backgroundColor: UIColor(hex: "#33343A"), action: #selector(editBtnTapped))
+    private lazy var exportButton = createButton(image: "download", title: "Export", startColor: UIColor(hex: "#0086E0"), endColor: UIColor(hex: "#0071BD"), action: #selector(exportButtonTapped))
+    private lazy var galleryButton = createButton(image: "gallery", title: "Select", startColor: .red, endColor: .orange, action: #selector(galleryBtnTapped))
     
     //MARK: - Private variebles
     private var player: AVPlayer?
     private var playerLayer: AVPlayerLayer?
     private var videoURL: URL?
+    private var trialMode: Int = 0 {
+        didSet {
+            saveDataToKeychaine(int: trialMode)
+            isUserSubscribed()
+        }
+    }
     private var isMediaSelected: Bool = false {
         didSet {
             updateViewVisibility()
@@ -147,11 +121,10 @@ class MainViewController: UIViewController {
     // MARK: - Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
-        
         addImagesToSegments()
         setupSubviews()
         setupConstraints()
-        qualitySegment.updateSubscriptionStatus(isSubscribed: false)
+        isUserSubscribed()
     }
 }
 
@@ -159,9 +132,11 @@ class MainViewController: UIViewController {
 private extension MainViewController {
     
     func setupSubviews() {
+        qualitySegment.delegate = self
+        editButton.isEnabled = false
+        exportButton.isEnabled = false
         view.backgroundColor = UIColor(hex: "#18191b")
-        proLabel.isHidden = true
-        [instagramView, tikTokView, youTubeView, snapchatView, imageView, videoContainerView, exportView, editButton, exportButton, markLabel].forEach {
+        [instagramView, tikTokView, youTubeView, snapchatView, imageView, videoContainerView, exportView, editButton, exportButton, galleryButton, markLabel].forEach {
             view.addSubview($0)
         }
         [socialMediaView, qualitySegment, watermarkView, sizeLabel].forEach {
@@ -170,7 +145,7 @@ private extension MainViewController {
         socialMediaView.addSubview(socialMediaSegment)
         watermarkView.addSubview(watermarkLabel)
         watermarkView.addSubview(watermarkSwitch)
-        watermarkView.addSubview(proLabel)
+        watermarkView.addSubview(proButton)
     }
     
     func setupConstraints() {
@@ -240,7 +215,7 @@ private extension MainViewController {
             $0.centerY.equalToSuperview()
             $0.right.equalToSuperview().inset(16.0)
         }
-        proLabel.snp.makeConstraints {
+        proButton.snp.makeConstraints {
             $0.width.equalTo(45.0)
             $0.height.equalTo(26.0)
             $0.centerY.equalToSuperview()
@@ -248,7 +223,12 @@ private extension MainViewController {
         }
         sizeLabel.snp.makeConstraints {
             $0.centerX.equalToSuperview()
-            $0.bottom.equalToSuperview()
+            $0.bottom.equalToSuperview().inset(8.0)
+        }
+        galleryButton.snp.makeConstraints {
+            $0.height.equalTo(46.0)
+            $0.left.right.equalToSuperview().inset(16.0)
+            $0.bottom.equalTo(editButton.snp.top).inset(-8.0)
         }
         editButton.snp.makeConstraints {
             $0.height.equalTo(56.0)
@@ -260,8 +240,33 @@ private extension MainViewController {
             $0.height.equalTo(editButton.snp.height)
             $0.left.equalTo(editButton.snp.right).offset(16.0)
             $0.right.equalToSuperview().inset(16.0)
-            $0.bottom.equalToSuperview().inset(40.0)
+            $0.bottom.equalTo(editButton.snp.bottom)
         }
+    }
+    
+    func createButton(image: String, title: String, backgroundColor: UIColor = .clear, startColor: UIColor = .clear, endColor: UIColor = .clear, action: Selector) -> UIButton {
+        let button = GradientButton()
+        
+        if let image = UIImage(named: image) {
+            let resizedImage = ImageUtils.resizeImage(image: image, targetSize: CGSize(width: 24.0, height: 24.0))
+            button.setImage(resizedImage.withRenderingMode(.alwaysTemplate), for: .normal)
+        }
+        
+        var configuration = UIButton.Configuration.filled()
+        var container = AttributeContainer()
+        container.font = UIFont(name: "Inter-SemiBold", size: 20.0)
+        configuration.attributedTitle = AttributedString(title, attributes: container)
+        configuration.imagePlacement = .leading
+        configuration.imagePadding = 8.0
+        configuration.baseBackgroundColor = backgroundColor
+        configuration.baseForegroundColor = .white
+        configuration.background.cornerRadius = 27.0
+        button.configuration = configuration
+        button.addTarget(self, action: action, for: .touchUpInside)
+        button.startColor = startColor
+        button.endColor = endColor
+        
+        return button
     }
     
     func createSegmentedControl(items: [String], selectedIndex: Int, target: Any?, action: Selector, backgroundColor: UIColor, tintColor: UIColor, separatorColorHex: String, fontSize: CGFloat = 16.0) -> UISegmentedControl {
@@ -374,6 +379,7 @@ private extension MainViewController {
         }
         markLabel.text = "Watermark"
         exportButton.isEnabled = isMediaSelected
+        editButton.isEnabled = isMediaSelected
     }
     
     func saveImage() {
@@ -397,6 +403,58 @@ private extension MainViewController {
         if let finalImage = exportedImage {
             UIImageWriteToSavedPhotosAlbum(finalImage, self, #selector(image(_:didFinishSavingWithError:contextInfo:)), nil)
         }
+    }
+    
+    func saveDataToKeychaine(int: Int) {
+        let keychain = Keychain(service: "Oleg.IOS-Test-Task")
+        keychain["TrialMode"] = String(int)
+    }
+    
+    func loadDataFromKeychaine() -> Int {
+        let keychain = Keychain(service: "Oleg.IOS-Test-Task")
+        guard let trialDays = keychain["TrialMode"] else { return 0 }
+        return Int(trialDays) ?? 0
+    }
+    
+    func isUserSubscribed() {
+        if loadDataFromKeychaine() > 0 {
+            proButton.isHidden = true
+            watermarkSwitch.isHidden = false
+            qualitySegment.updateSubscriptionStatus(isSubscribed: true)
+        } else {
+            markLabel.isHidden = false
+            proButton.isHidden = false
+            watermarkSwitch.isHidden = true
+            qualitySegment.updateSubscriptionStatus(isSubscribed: false)
+        }
+    }
+    
+    func showAlertController() {
+        let alert = UIAlertController(
+            title: "Trial Period",
+            message: "You granted trial period for 5 exports",
+            preferredStyle: .alert
+        )
+        
+        let acceptAction = UIAlertAction(title: "Ok", style: .default) { _ in
+            self.trialMode = 5
+        }
+        
+        let declineAction = UIAlertAction(title: "Decline", style: .cancel) { _ in
+            self.trialMode = 0
+        }
+
+        alert.addAction(acceptAction)
+        alert.addAction(declineAction)
+ 
+        self.present(alert, animated: true, completion: nil)
+    }
+}
+
+// MARK: - CropViewControllerDelegate
+extension MainViewController: SegmentedControlDelegate {
+    func updateTrialMode(_ value: Int) {
+        showAlertController()
     }
 }
 
@@ -443,8 +501,21 @@ extension MainViewController: CropViewControllerDelegate {
 // MARK: - Private Objc-C method's
 @objc private extension MainViewController {
     
+    func proBtnTapped(_ sender: UIButton) {
+        showAlertController()
+    }
+    
+    func editBtnTapped(_ sender: UIButton) {
+        youTubeView.isEdit.toggle()
+        tikTokView.isEdit.toggle()
+    }
+    
     func exportButtonTapped(_ sender: UIButton) {
-                saveImage()
+        saveImage()
+        if trialMode != 0 {
+            trialMode = trialMode - 1
+            print("trial \(trialMode)")
+        }
     }
     
     func image(_ image: UIImage, didFinishSavingWithError error: Error?, contextInfo: UnsafeRawPointer) {
@@ -465,7 +536,7 @@ extension MainViewController: CropViewControllerDelegate {
         player?.play()
     }
 
-    func editBtnTapped() {
+    func galleryBtnTapped(_ sender: UIButton) {
         PHPhotoLibrary.requestAuthorization { status in
             switch status {
             case .authorized:

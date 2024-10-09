@@ -93,6 +93,11 @@ final class YouTubeView: UIView {
     private var isRemixed = false
     private var isAvatarSelected = false
     private var isFollowed = false
+    var isEdit = false {
+        didSet {
+            showBorders(show: isEdit)
+        }
+    }
     
     // MARK: - Lifecycle
     override init(frame: CGRect) {
@@ -113,7 +118,7 @@ final class YouTubeView: UIView {
 }
 
 private extension YouTubeView {
-    
+        
     func setupSubviews() {
         tagsTextView.delegate = self
         captionTextView.delegate = self
@@ -149,6 +154,7 @@ private extension YouTubeView {
             $0.bottom.equalToSuperview().inset(8.0)
         }
         likeButton.snp.makeConstraints {
+            $0.width.equalTo(100.0)
             $0.centerX.equalTo(musicImageView.snp.centerX)
             $0.bottom.equalTo(likeTextField.snp.top).inset(-4.0)
         }
@@ -250,6 +256,24 @@ private extension YouTubeView {
         let musicTapGesture = UITapGestureRecognizer(target: self, action: #selector(musicTapped))
         musicImageView.addGestureRecognizer(musicTapGesture)
         musicImageView.isUserInteractionEnabled = true
+    }
+    
+    func showBorders(show: Bool) {
+        if show {
+            [avatarImageView, likeTextField, unLikeTextField, commentTextField, shareTextField, remixTextField, captionTextView, tagsTextView, usernameTextField, musicImageView].forEach {
+                $0.isUserInteractionEnabled = true
+                $0.layer.borderColor = UIColor.blue.cgColor
+                $0.layer.borderWidth = 2.0
+                $0.layer.cornerRadius = 5.0
+            }
+        } else {
+            [avatarImageView, likeTextField, unLikeTextField, commentTextField, shareTextField, remixTextField, captionTextView, tagsTextView, usernameTextField, musicImageView].forEach {
+                $0.isUserInteractionEnabled = false
+                $0.layer.borderColor = UIColor.blue.cgColor
+                $0.layer.borderWidth = 0.0
+                $0.layer.cornerRadius = 5.0
+            }
+        }
     }
 }
 
@@ -380,6 +404,7 @@ extension YouTubeView: CropViewControllerDelegate {
         let resizedImage = ImageUtils.resizeImage(image: image, targetSize: CGSize(width: 26.0, height: 26.0))
         if isAvatarSelected == true {
             avatarImageView.image = resizedImage
+            avatarImageView.layer.cornerRadius = 13.0
         } else {
             musicImageView.image = resizedImage
         }
@@ -406,31 +431,31 @@ extension YouTubeView: CropViewControllerDelegate {
         self.presentImagePicker()
     }
     
-    func likeBtnTapped() {
+    func likeBtnTapped(_ sender: UIButton) {
         likes += isLiked ?  -1 : 1
         likeButton.tintColor = isLiked ? .white : .systemBlue
         isLiked.toggle()
     }
     
-    func unLikeBtnTapped() {
+    func unLikeBtnTapped(_ sender: UIButton) {
         unLikes += isUnLiked ?  -1 : 1
         unLikeButton.tintColor = isUnLiked ? .white : .systemBlue
         isUnLiked.toggle()
     }
     
-    func commentBtnTapped() {
+    func commentBtnTapped(_ sender: UIButton) {
         comments += isCommented ?  -1 : 1
         commentButton.tintColor = isCommented ? .white : .systemBlue
         isCommented.toggle()
     }
     
-    func shareBtnTapped() {
+    func shareBtnTapped(_ sender: UIButton) {
         shareds += isShared ?  -1 : 1
         shareButton.tintColor = isShared ? .white : .systemBlue
         isShared.toggle()
     }
     
-    func remixBtnTapped() {
+    func remixBtnTapped(_ sender: UIButton) {
         remixs += isRemixed ?  -1 : 1
         remixButton.tintColor = isRemixed ? .white : .systemBlue
         isRemixed.toggle()

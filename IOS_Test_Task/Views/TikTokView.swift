@@ -50,18 +50,7 @@ final class TikTokView: UIView {
     private lazy var savedTextField = createTextField(text: "89k")
     private lazy var repostButton = createButton(imageName: "repost", target: #selector(repostBtnTapped))
     private lazy var repostTextField = createTextField(text: "132.5k")
-    private let musicImageView = UIImageView().after {
-        $0.contentMode = .scaleAspectFit
-        $0.clipsToBounds = true
-        $0.backgroundColor = .clear
-        $0.layer.cornerRadius = 18.0
-        $0.isHidden = false
-        
-        if let image = UIImage(named: "music") {
-            let resizedImage = ImageUtils.resizeImage(image: image, targetSize: CGSize(width: 36.0, height: 36.0))
-            $0.image = resizedImage
-        }
-    }
+    private lazy var musicImageView = createImageView(image: "music", size: 36.0, radius: 16.0, tint: .clear)
     private let usernameTextField = UITextField().after {
         $0.text = "Name and Last name"
         $0.font = UIFont(name: "Inter-SemiBold", size: 12.0) ?? UIFont.systemFont(ofSize: 12.0)
@@ -69,46 +58,10 @@ final class TikTokView: UIView {
         $0.backgroundColor = .clear
         $0.textAlignment = .center
     }
-    private let captionTextView = UITextView().after {
-        $0.text = "Caption of the post 😉"
-        $0.font = UIFont(name: "Inter-SemiBold", size: 10.0) ?? UIFont.systemFont(ofSize: 10.0)
-        $0.textColor = .white
-        $0.backgroundColor = .clear
-        $0.textAlignment = .left
-        $0.isScrollEnabled = false
-        $0.textContainer.lineBreakMode = .byWordWrapping
-        $0.textContainerInset = .zero
-    }
-    private let tagsTextView = UITextView().after {
-        $0.text = "#fyp"
-        $0.font = UIFont(name: "Inter-SemiBold", size: 10.0) ?? UIFont.systemFont(ofSize: 10.0)
-        $0.textColor = .white
-        $0.backgroundColor = .clear
-        $0.textAlignment = .left
-        $0.isScrollEnabled = false
-        $0.textContainer.lineBreakMode = .byWordWrapping
-        $0.textContainerInset = .zero
-    }
-    private let translateTextField = UITextField().after {
-        $0.text = "Show translation"
-        $0.font = UIFont(name: "Inter-Regular", size: 10.0) ?? UIFont.systemFont(ofSize: 10.0)
-        $0.isUserInteractionEnabled = false
-        $0.textColor = .white
-        $0.backgroundColor = .clear
-        $0.textAlignment = .center
-    }
-    private let translateImageView = UIImageView().after {
-        $0.contentMode = .scaleAspectFit
-        $0.clipsToBounds = true
-        $0.backgroundColor = .clear
-        $0.isHidden = false
-        
-        if let image = UIImage(named: "translate") {
-            let resizedImage = ImageUtils.resizeImage(image: image, targetSize: CGSize(width: 12.0, height: 12.0))
-            $0.image = resizedImage.withRenderingMode(.alwaysTemplate)
-            $0.tintColor = .white
-        }
-    }
+    private lazy var captionTextView = createTextView(text: "Caption of the post 😉")
+    private lazy var tagsTextView = createTextView(text: "#fyp")
+    private lazy var translateTextField = createTextView(text: "Show translation", aligment: .center)
+    private lazy var translateImageView = createImageView(image: "translate", size: 12.0)
     private let songTextField = UITextField().after {
         $0.text = "Song name - song artist"
         $0.font = UIFont(name: "Inter-Regular", size: 10.0) ?? UIFont.systemFont(ofSize: 10.0)
@@ -116,18 +69,7 @@ final class TikTokView: UIView {
         $0.backgroundColor = .clear
         $0.textAlignment = .left
     }
-    private let noteImageView = UIImageView().after {
-        $0.contentMode = .scaleAspectFit
-        $0.clipsToBounds = true
-        $0.backgroundColor = .clear
-        $0.isHidden = false
-        
-        if let image = UIImage(named: "note") {
-            let resizedImage = ImageUtils.resizeImage(image: image, targetSize: CGSize(width: 12.0, height: 12.0))
-            $0.image = resizedImage.withRenderingMode(.alwaysTemplate)
-            $0.tintColor = .white
-        }
-    }
+    private lazy var noteImageView = createImageView(image: "note", size: 12.0)
     
     //MARK: - Private variebles
     private var likes: Double = 250500
@@ -139,6 +81,11 @@ final class TikTokView: UIView {
     private var reposts: Double = 132500
     private var isReposted = false
     private var isAvatarSelected = false
+    var isEdit = false {
+        didSet {
+            showBorders(show: isEdit)
+        }
+    }
     
     // MARK: - Lifecycle
     override init(frame: CGRect) {
@@ -248,6 +195,23 @@ private extension TikTokView {
         }
     }
     
+    func createImageView(image: String, size: Double, radius: Double = 0.0, tint: UIColor = .white) -> UIImageView {
+        let imageView = UIImageView()
+        
+        imageView.contentMode = .scaleAspectFit
+        imageView.clipsToBounds = true
+        imageView.backgroundColor = .clear
+        imageView.isHidden = false
+        imageView.layer.cornerRadius = radius
+        
+        if let image = UIImage(named: image) {
+            let resizedImage = ImageUtils.resizeImage(image: image, targetSize: CGSize(width: size, height: size))
+            imageView.image = resizedImage.withRenderingMode(.alwaysTemplate)
+            imageView.tintColor = tint
+        }
+        return imageView
+    }
+    
     func createButton(imageName: String, target: Selector) -> UIButton {
         let button = UIButton()
         if let image = UIImage(named: imageName) {
@@ -258,15 +222,28 @@ private extension TikTokView {
         button.addTarget(self, action: target, for: .touchUpInside)
         return button
     }
-
+    
+    func createTextView(text: String, aligment: NSTextAlignment = .left ) -> UITextView {
+        let textView = UITextView()
+        textView.text = text
+        textView.font = UIFont(name: "Inter-SemiBold", size: 10.0) ?? UIFont.systemFont(ofSize: 10.0)
+        textView.textColor = .white
+        textView.backgroundColor = .clear
+        textView.textAlignment = aligment
+        textView.isScrollEnabled = false
+        textView.textContainer.lineBreakMode = .byWordWrapping
+        textView.textContainerInset = .zero
+        return textView
+    }
+    
     func createTextField(text: String, fontSize: CGFloat = 10.0, textColor: UIColor = .white, alignment: NSTextAlignment = .center) -> UITextField {
-            let textField = CountTextField()
-            textField.text = text
-            textField.font = UIFont(name: "Inter-Regular", size: fontSize) ?? UIFont.systemFont(ofSize: fontSize)
-            textField.textColor = textColor
-            textField.textAlignment = alignment
-            return textField
-        }
+        let textField = CountTextField()
+        textField.text = text
+        textField.font = UIFont(name: "Inter-Regular", size: fontSize) ?? UIFont.systemFont(ofSize: fontSize)
+        textField.textColor = textColor
+        textField.textAlignment = alignment
+        return textField
+    }
     
     func setupTextFields() {
         [likeTextField, commentTextField, savedTextField, repostTextField, usernameTextField, songTextField].forEach{
@@ -304,6 +281,24 @@ private extension TikTokView {
         vc.delegate = self
         if let parentVC = self.parentViewController {
             parentVC.present(vc, animated: true)
+        }
+    }
+    
+    func showBorders(show: Bool) {
+        if show {
+            [avatarImageView, likeTextField, commentTextField, savedTextField, repostTextField, usernameTextField, captionTextView, tagsTextView, songTextField, musicImageView].forEach {
+                $0.isUserInteractionEnabled = true
+                $0.layer.borderColor = UIColor.blue.cgColor
+                $0.layer.borderWidth = 2.0
+                $0.layer.cornerRadius = 5.0
+            }
+        } else {
+            [avatarImageView, likeTextField, commentTextField, savedTextField, repostTextField, usernameTextField, captionTextView, tagsTextView, songTextField, musicImageView].forEach {
+                $0.isUserInteractionEnabled = false
+                $0.layer.borderColor = UIColor.blue.cgColor
+                $0.layer.borderWidth = 0.0
+                $0.layer.cornerRadius = 5.0
+            }
         }
     }
 }

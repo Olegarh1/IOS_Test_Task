@@ -6,8 +6,12 @@
 //
 
 import UIKit
+import KeychainAccess
 
 class SegmentedControl: UIView {
+    
+    //MARK: - Delegate
+    weak var delegate: SegmentedControlDelegate?
     
     //MARK: - Properties
     var stackView: UIStackView = UIStackView()
@@ -271,8 +275,12 @@ class SegmentedControl: UIView {
     
     //MARK: - IBActions
     @objc func segmentTapped(_ sender: UIButton) {
-        didTapSegment?(sender.tag)
-        currentIndex = sender.tag
+        if !isSubscribed && (sender.tag == 1 || sender.tag == 2) {
+            delegate?.updateTrialMode(5)
+        } else {
+            didTapSegment?(sender.tag)
+            currentIndex = sender.tag
+        }
     }
     
     func updateSubscriptionStatus(isSubscribed: Bool) {
