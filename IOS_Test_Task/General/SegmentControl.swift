@@ -11,7 +11,7 @@ import KeychainAccess
 class SegmentedControl: UIView {
     
     //MARK: - Delegate
-    weak var delegate: SegmentedControlDelegate?
+    weak var delegate: QualitySegmentDelegate?
     
     //MARK: - Properties
     var stackView: UIStackView = UIStackView()
@@ -226,7 +226,7 @@ class SegmentedControl: UIView {
                 button.configuration?.image = nil
             } else {
                 if let image = UIImage(named: "PRO") {
-                    let resizedImage = ImageUtils.resizeImage(image: image, targetSize: CGSize(width: 36.0, height: 36.0))
+                    let resizedImage = ImageUtils.resizeImage(image: image, targetSize: CGSize(width: 45.0, height: 26.0))
                     button.setImage(resizedImage, for: .normal)
                     button.semanticContentAttribute = .forceRightToLeft
                     var configuration = UIButton.Configuration.filled()

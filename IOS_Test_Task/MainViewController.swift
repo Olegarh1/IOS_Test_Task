@@ -13,8 +13,10 @@ import AVFoundation
 import CropViewController
 import KeychainAccess
 
-protocol SegmentedControlDelegate: AnyObject {
+protocol ExportViewDelegate: AnyObject {
     func updateTrialMode(_ value: Int)
+    func updateMark(_ state: Bool)
+    func showSocialView(_ index: Int)
 }
 
 class MainViewController: UIViewController {
@@ -58,41 +60,7 @@ class MainViewController: UIViewController {
         $0.alpha = 0.5
         $0.transform = CGAffineTransform(rotationAngle: -45 * .pi / 180)
     }
-    private let exportView = UIView()
-    private let socialMediaView = CustomView()
-    private lazy var socialMediaSegment: UISegmentedControl = createSegmentedControl(
-        items: ["Instagram", "TikTok", "YouTube", "Snapchat"],
-        selectedIndex: 2,
-        target: self,
-        action: #selector(mediaSegmentChanged),
-        backgroundColor: UIColor.black.withAlphaComponent(0.5),
-        tintColor: UIColor(hex: "#33343A"),
-        separatorColorHex: "#18191b"
-    )
-    private lazy var qualitySegment = SegmentedControl()
-    private lazy var proButton: UIButton = {
-        let button = UIButton()
-        
-        if let image = UIImage(named: "PRO") {
-            let resizedImage = ImageUtils.resizeImage(image: image, targetSize: CGSize(width: 36.0, height: 36.0))
-            button.setImage(resizedImage, for: .normal)
-            button.semanticContentAttribute = .forceRightToLeft
-        }
-        button.addTarget(self, action: #selector(proBtnTapped), for: .touchUpInside)
-        return button
-    }()
-    private let watermarkView = CustomView()
-    private let watermarkLabel = UILabel().after {
-        $0.text = "Remove Watermark"
-        $0.font = UIFont(name: "Inter-SemiBold", size: 16.0)
-        $0.textColor = UIColor(hex: "#A0A2AF")
-    }
-    private lazy var watermarkSwitch = UISwitch().after {
-        $0.tintColor = UIColor(hex: "#33343A")
-        $0.onTintColor = UIColor(hex: "#33343A")
-        $0.addTarget(self, action: #selector(switchChanged(_:)), for: .valueChanged)
-        $0.thumbTintColor = UIColor(hex: "#64656D")
-    }
+    private let exportView = ExportView()
     private var sizeLabel = UILabel().after {
         $0.text = ""
         $0.font = UIFont(name: "Inter-Medium", size: 13.0)
@@ -106,7 +74,7 @@ class MainViewController: UIViewController {
     private var player: AVPlayer?
     private var playerLayer: AVPlayerLayer?
     private var videoURL: URL?
-    private var trialMode: Int = 0 {
+    private lazy var trialMode: Int = loadDataFromKeychaine() {
         didSet {
             saveDataToKeychaine(int: trialMode)
             isUserSubscribed()
@@ -115,13 +83,23 @@ class MainViewController: UIViewController {
     private var isMediaSelected: Bool = false {
         didSet {
             updateViewVisibility()
+            showSocialView(mediaIndex)
+        }
+    }
+    private var mediaIndex = 2 {
+        didSet {
+            showSocialMedias(selectedIndex: mediaIndex)
+        }
+    }
+    private var isMarkHidden = false {
+        didSet {
+            showMarkLabel(state: isMarkHidden)
         }
     }
     
     // MARK: - Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
-        addImagesToSegments()
         setupSubviews()
         setupConstraints()
         isUserSubscribed()
@@ -132,20 +110,14 @@ class MainViewController: UIViewController {
 private extension MainViewController {
     
     func setupSubviews() {
-        qualitySegment.delegate = self
+        exportView.delegate = self
         editButton.isEnabled = false
         exportButton.isEnabled = false
         view.backgroundColor = UIColor(hex: "#18191b")
-        [instagramView, tikTokView, youTubeView, snapchatView, imageView, videoContainerView, exportView, editButton, exportButton, galleryButton, markLabel].forEach {
+        view.addSubview(exportView)
+        [instagramView, tikTokView, youTubeView, snapchatView, imageView, videoContainerView, editButton, exportButton, galleryButton, markLabel, sizeLabel].forEach {
             view.addSubview($0)
         }
-        [socialMediaView, qualitySegment, watermarkView, sizeLabel].forEach {
-            exportView.addSubview($0)
-        }
-        socialMediaView.addSubview(socialMediaSegment)
-        watermarkView.addSubview(watermarkLabel)
-        watermarkView.addSubview(watermarkSwitch)
-        watermarkView.addSubview(proButton)
     }
     
     func setupConstraints() {
@@ -180,50 +152,19 @@ private extension MainViewController {
             $0.top.equalToSuperview().inset(52.0)
         }
         videoContainerView.snp.makeConstraints{
-            $0.width.equalTo(234.0)
-            $0.height.equalTo(416.0)
+            $0.width.equalTo(imageView.snp.width)
+            $0.height.equalTo(imageView.snp.height)
             $0.centerX.equalToSuperview()
             $0.top.equalToSuperview().inset(52.0)
         }
         exportView.snp.makeConstraints {
-            $0.height.equalTo(250.0)
-            $0.bottom.equalTo(editButton.snp.top).offset(-56.0)
+            $0.height.equalTo(210.0)
+            $0.top.equalTo(videoContainerView.snp.bottom).inset(-8.0)
             $0.left.right.equalToSuperview().inset(16.0)
-        }
-        socialMediaView.snp.makeConstraints {
-            $0.top.left.right.equalToSuperview()
-            $0.height.equalTo(64.0)
-        }
-        socialMediaSegment.snp.makeConstraints {
-            $0.edges.equalToSuperview().inset(8.0)
-        }
-        qualitySegment.snp.makeConstraints {
-            $0.top.equalTo(socialMediaView.snp.bottom).inset(-8.0)
-            $0.left.right.equalToSuperview()
-            $0.height.equalTo(socialMediaView.snp.height)
-        }
-        watermarkView.snp.makeConstraints {
-            $0.top.equalTo(qualitySegment.snp.bottom).inset(-8.0)
-            $0.left.right.equalToSuperview()
-            $0.height.equalTo(socialMediaView.snp.height)
-        }
-        watermarkLabel.snp.makeConstraints {
-            $0.centerY.equalToSuperview()
-            $0.left.equalToSuperview().inset(16.0)
-        }
-        watermarkSwitch.snp.makeConstraints {
-            $0.centerY.equalToSuperview()
-            $0.right.equalToSuperview().inset(16.0)
-        }
-        proButton.snp.makeConstraints {
-            $0.width.equalTo(45.0)
-            $0.height.equalTo(26.0)
-            $0.centerY.equalToSuperview()
-            $0.right.equalToSuperview().inset(16.0)
         }
         sizeLabel.snp.makeConstraints {
             $0.centerX.equalToSuperview()
-            $0.bottom.equalToSuperview().inset(8.0)
+            $0.top.equalTo(exportView.snp.bottom).inset(-8.0)
         }
         galleryButton.snp.makeConstraints {
             $0.height.equalTo(46.0)
@@ -267,44 +208,6 @@ private extension MainViewController {
         button.endColor = endColor
         
         return button
-    }
-    
-    func createSegmentedControl(items: [String], selectedIndex: Int, target: Any?, action: Selector, backgroundColor: UIColor, tintColor: UIColor, separatorColorHex: String, fontSize: CGFloat = 16.0) -> UISegmentedControl {
-        let segmentControl = UISegmentedControl(items: items)
-        segmentControl.selectedSegmentIndex = selectedIndex
-        segmentControl.selectedSegmentTintColor = tintColor
-        segmentControl.backgroundColor = backgroundColor
-        segmentControl.addTarget(target, action: action, for: .valueChanged)
-        
-        let titleTextAttributes: [NSAttributedString.Key: Any] = [
-            .foregroundColor: UIColor.white,
-            .font: UIFont(name: "Inter-SemiBold", size: fontSize) ?? UIFont.systemFont(ofSize: fontSize)
-        ]
-        UISegmentedControl.appearance().setTitleTextAttributes(titleTextAttributes, for: .normal)
-        
-        let separator = UIColor(hex: separatorColorHex).image()
-        segmentControl.setDividerImage(separator, forLeftSegmentState: .normal, rightSegmentState: .normal, barMetrics: .default)
-        segmentControl.layer.shadowColor = UIColor(hex: "#18191b").cgColor
-        
-        return segmentControl
-    }
-    
-    func addImagesToSegments() {
-        let images = ["mingcute_ins-line", "mingcute_tiktok-line", "mingcute_youtube-line", "mingcute_snapchat-line"]
-        for index in 0...images.count - 1{
-            if let image = UIImage(named: images[index])?.withRenderingMode(.alwaysTemplate) {
-                let resizedImage = ImageUtils.resizeImage(image: image, targetSize: CGSize(width: 24.0, height: 24.0))
-                socialMediaSegment.setImage(
-                    UIImage.textEmbededImage(
-                        image: resizedImage,
-                        string: "",
-                        color: .black
-                    ),
-                    forSegmentAt: index
-                )
-            }
-        }
-        socialMediaSegment.tintColor = .white
     }
 
     func presentImagePicker() {
@@ -373,10 +276,6 @@ private extension MainViewController {
     }
     
     func updateViewVisibility() {
-        let selectedIndex = socialMediaSegment.selectedSegmentIndex
-        [instagramView, tikTokView, youTubeView, snapchatView].enumerated().forEach { index, view in
-            view.isHidden = index != selectedIndex || !isMediaSelected
-        }
         markLabel.text = "Watermark"
         exportButton.isEnabled = isMediaSelected
         editButton.isEnabled = isMediaSelected
@@ -418,14 +317,11 @@ private extension MainViewController {
     
     func isUserSubscribed() {
         if loadDataFromKeychaine() > 0 {
-            proButton.isHidden = true
-            watermarkSwitch.isHidden = false
-            qualitySegment.updateSubscriptionStatus(isSubscribed: true)
+            showMarkLabel(state: isMarkHidden)
+            exportView.updateSubscriptionStatus(isSubscribed: true)
         } else {
             markLabel.isHidden = false
-            proButton.isHidden = false
-            watermarkSwitch.isHidden = true
-            qualitySegment.updateSubscriptionStatus(isSubscribed: false)
+            exportView.updateSubscriptionStatus(isSubscribed: false)
         }
     }
     
@@ -449,10 +345,29 @@ private extension MainViewController {
  
         self.present(alert, animated: true, completion: nil)
     }
+    
+    func showSocialMedias(selectedIndex: Int) {
+        [instagramView, tikTokView, youTubeView, snapchatView].enumerated().forEach { index, view in
+            view.isHidden = index != selectedIndex || !isMediaSelected
+        }
+    }
+    
+    func showMarkLabel(state: Bool) {
+        markLabel.isHidden = state
+    }
 }
 
-// MARK: - CropViewControllerDelegate
-extension MainViewController: SegmentedControlDelegate {
+// MARK: - SubscribtionDelegate
+extension MainViewController: ExportViewDelegate {
+    
+    func showSocialView(_ selectedIndex: Int) {
+        mediaIndex = selectedIndex
+    }
+    
+    func updateMark(_ state: Bool) {
+        isMarkHidden = state
+    }
+    
     func updateTrialMode(_ value: Int) {
         showAlertController()
     }
@@ -501,10 +416,6 @@ extension MainViewController: CropViewControllerDelegate {
 // MARK: - Private Objc-C method's
 @objc private extension MainViewController {
     
-    func proBtnTapped(_ sender: UIButton) {
-        showAlertController()
-    }
-    
     func editBtnTapped(_ sender: UIButton) {
         youTubeView.isEdit.toggle()
         tikTokView.isEdit.toggle()
@@ -514,7 +425,6 @@ extension MainViewController: CropViewControllerDelegate {
         saveImage()
         if trialMode != 0 {
             trialMode = trialMode - 1
-            print("trial \(trialMode)")
         }
     }
     
@@ -552,25 +462,6 @@ extension MainViewController: CropViewControllerDelegate {
             default:
                 break
             }
-        }
-    }
-    
-    func mediaSegmentChanged(sender: UISegmentedControl) {
-        if isMediaSelected {
-            let selectedIndex = socialMediaSegment.selectedSegmentIndex
-            [instagramView, tikTokView, youTubeView, snapchatView].enumerated().forEach { index, view in
-                view.isHidden = index != selectedIndex || !isMediaSelected
-            }
-        }
-    }
-    
-    func switchChanged(_ sender: UISwitch) {
-        if sender.isOn {
-            markLabel.isHidden = true
-            sender.thumbTintColor = UIColor(hex: "#0086E0")
-        } else {
-            markLabel.isHidden = false
-            sender.thumbTintColor = UIColor(hex: "#64656D")
         }
     }
 }
