@@ -22,21 +22,20 @@ protocol ExportViewDelegate: AnyObject {
 class MainViewController: UIViewController {
     
     // MARK: - Private UI elements
-    private let instagramView = InstagramView().after{
-        $0.isHidden = true
+    private let socialMediaView = UIView().after {
         $0.layer.zPosition = 1
+    }
+    private let instagramView = InstagramView().after {
+        $0.isHidden = true
     }
     private let tikTokView = TikTokView().after{
         $0.isHidden = true
-        $0.layer.zPosition = 1
     }
-    private let youTubeView = YouTubeView().after{
+    private let youTubeView = YouTubeView().after {
         $0.isHidden = true
-        $0.layer.zPosition = 1
     }
     private let snapchatView = SnapchatView().after{
         $0.isHidden = true
-        $0.layer.zPosition = 1
     }
     private let imageView = UIImageView().after {
         $0.contentMode = .scaleAspectFit
@@ -69,11 +68,17 @@ class MainViewController: UIViewController {
     private lazy var editButton = createButton(image: "edit", title: "Edit", backgroundColor: UIColor(hex: "#33343A"), action: #selector(editBtnTapped))
     private lazy var exportButton = createButton(image: "download", title: "Export", startColor: UIColor(hex: "#0086E0"), endColor: UIColor(hex: "#0071BD"), action: #selector(exportButtonTapped))
     private lazy var galleryButton = createButton(image: "gallery", title: "Select", startColor: .red, endColor: .orange, action: #selector(galleryBtnTapped))
+    private let loadingIndicator = UIActivityIndicatorView(style: .large).after {
+        $0.layer.zPosition = 2
+        $0.hidesWhenStopped = true
+        $0.color = .white
+    }
     
     //MARK: - Private variebles
     private var player: AVPlayer?
     private var playerLayer: AVPlayerLayer?
     private var videoURL: URL?
+    private var isVideo: Bool?
     private lazy var trialMode: Int = loadDataFromKeychaine() {
         didSet {
             saveDataToKeychaine(int: trialMode)
@@ -115,56 +120,57 @@ private extension MainViewController {
         exportButton.isEnabled = false
         view.backgroundColor = UIColor(hex: "#18191b")
         view.addSubview(exportView)
-        [instagramView, tikTokView, youTubeView, snapchatView, imageView, videoContainerView, editButton, exportButton, galleryButton, markLabel, sizeLabel].forEach {
+        [socialMediaView, exportView, imageView, videoContainerView, editButton, exportButton, galleryButton, sizeLabel, loadingIndicator].forEach {
             view.addSubview($0)
+        }
+        [instagramView, tikTokView, youTubeView, snapchatView, markLabel].forEach {
+            socialMediaView.addSubview($0)
         }
     }
     
     func setupConstraints() {
-        instagramView.snp.makeConstraints {
-            $0.top.right.left.equalToSuperview().inset(16.0)
-            $0.bottom.equalTo(tikTokView.snp.bottom)
-        }
-        tikTokView.snp.makeConstraints {
-            $0.width.equalTo(234.0)
-            $0.height.equalTo(416.0)
+        socialMediaView.snp.makeConstraints {
+            $0.width.equalTo(imageView.snp.width)
+            $0.height.equalTo(imageView.snp.height)
             $0.top.equalTo(imageView.snp.top)
             $0.centerX.equalTo(imageView.snp.centerX)
+        }
+        instagramView.snp.makeConstraints {
+            $0.edges.equalToSuperview()
+        }
+        tikTokView.snp.makeConstraints {
+            $0.edges.equalToSuperview()
         }
         markLabel.snp.makeConstraints {
             $0.centerY.equalTo(tikTokView.snp.centerY)
             $0.centerX.equalToSuperview()
         }
         youTubeView.snp.makeConstraints {
-            $0.width.equalTo(tikTokView.snp.width)
-            $0.height.equalTo(tikTokView.snp.height)
-            $0.top.equalTo(imageView.snp.top)
-            $0.centerX.equalTo(imageView.snp.centerX)
+            $0.edges.equalToSuperview()
         }
         snapchatView.snp.makeConstraints {
-            $0.top.right.left.equalToSuperview().inset(16.0)
-            $0.bottom.equalTo(tikTokView.snp.bottom)
+            $0.edges.equalToSuperview()
         }
         imageView.snp.makeConstraints{
-            $0.width.equalTo(234.0)
-            $0.height.equalTo(416.0)
+            $0.width.equalTo(imageView.snp.height).dividedBy(1.78)
             $0.centerX.equalToSuperview()
             $0.top.equalToSuperview().inset(52.0)
+            $0.bottom.equalTo(exportView.snp.top).inset(-8.0)
         }
         videoContainerView.snp.makeConstraints{
-            $0.width.equalTo(imageView.snp.width)
-            $0.height.equalTo(imageView.snp.height)
+            $0.width.equalTo(videoContainerView.snp.height).dividedBy(1.78)
             $0.centerX.equalToSuperview()
             $0.top.equalToSuperview().inset(52.0)
+            $0.bottom.equalTo(exportView.snp.top).inset(-8.0)
         }
         exportView.snp.makeConstraints {
             $0.height.equalTo(210.0)
-            $0.top.equalTo(videoContainerView.snp.bottom).inset(-8.0)
+            $0.bottom.equalTo(sizeLabel.snp.top).inset(-8.0)
             $0.left.right.equalToSuperview().inset(16.0)
         }
         sizeLabel.snp.makeConstraints {
             $0.centerX.equalToSuperview()
-            $0.top.equalTo(exportView.snp.bottom).inset(-8.0)
+            $0.bottom.equalTo(galleryButton.snp.top).inset(-8.0)
         }
         galleryButton.snp.makeConstraints {
             $0.height.equalTo(46.0)
@@ -182,6 +188,10 @@ private extension MainViewController {
             $0.left.equalTo(editButton.snp.right).offset(16.0)
             $0.right.equalToSuperview().inset(16.0)
             $0.bottom.equalTo(editButton.snp.bottom)
+        }
+        loadingIndicator.snp.makeConstraints {
+            $0.centerY.equalTo(socialMediaView.snp.centerY)
+            $0.centerX.equalToSuperview()
         }
     }
     
@@ -209,7 +219,7 @@ private extension MainViewController {
         
         return button
     }
-
+    
     func presentImagePicker() {
         let vc = UIImagePickerController()
         vc.sourceType = .photoLibrary
@@ -233,14 +243,9 @@ private extension MainViewController {
         player?.play()
         updateSizeLabelForMedia(mediaURL: url)
         
-        NotificationCenter.default.addObserver(
-                self,
-                selector: #selector(playerDidFinishPlaying),
-                name: .AVPlayerItemDidPlayToEndTime,
-                object: playerItem
-            )
+        NotificationCenter.default.addObserver(self, selector: #selector(playerDidFinishPlaying), name: .AVPlayerItemDidPlayToEndTime, object: playerItem )
     }
-
+    
     func showCrop(image: UIImage) {
         let vc = CropViewController(croppingStyle: .default, image: image)
         vc.aspectRatioPreset = .presetCustom
@@ -267,7 +272,7 @@ private extension MainViewController {
             print("Error getting file size: \(error.localizedDescription)")
         }
     }
-
+    
     func updateSizeLabelForImage(image: UIImage) {
         if let imageData = image.jpegData(compressionQuality: 1.0) {
             let imageSizeInMB = Double(imageData.count) / (1024.0 * 1024.0)
@@ -287,11 +292,9 @@ private extension MainViewController {
             return
         }
         
-        let components = [instagramView, tikTokView, youTubeView, snapchatView, markLabel]
-        components.forEach {
-            $0.frame = imageView.bounds
-            imageView.addSubview($0)
-        }
+        loadingIndicator.startAnimating()
+        socialMediaView.frame = imageView.bounds
+        imageView.addSubview(socialMediaView)
         
         UIGraphicsBeginImageContextWithOptions(imageView.bounds.size, false, 0.0)
         imageView.layer.render(in: UIGraphicsGetCurrentContext()!)
@@ -301,6 +304,8 @@ private extension MainViewController {
         
         if let finalImage = exportedImage {
             UIImageWriteToSavedPhotosAlbum(finalImage, self, #selector(image(_:didFinishSavingWithError:contextInfo:)), nil)
+        } else {
+            loadingIndicator.stopAnimating()
         }
     }
     
@@ -326,11 +331,7 @@ private extension MainViewController {
     }
     
     func showAlertController() {
-        let alert = UIAlertController(
-            title: "Trial Period",
-            message: "You granted trial period for 5 exports",
-            preferredStyle: .alert
-        )
+        let alert = UIAlertController(title: "Trial Period", message: "You granted trial period for 5 exports", preferredStyle: .alert)
         
         let acceptAction = UIAlertAction(title: "Ok", style: .default) { _ in
             self.trialMode = 5
@@ -339,10 +340,9 @@ private extension MainViewController {
         let declineAction = UIAlertAction(title: "Decline", style: .cancel) { _ in
             self.trialMode = 0
         }
-
+        
         alert.addAction(acceptAction)
         alert.addAction(declineAction)
- 
         self.present(alert, animated: true, completion: nil)
     }
     
@@ -378,22 +378,25 @@ extension MainViewController: UIImagePickerControllerDelegate, UINavigationContr
     
     func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
         if let mediaType = info[.mediaType] as? String {
-                if mediaType == "public.image", let image = info[.originalImage] as? UIImage {
-                    imageView.isHidden = false
-                    videoContainerView.isHidden = true
-                    picker.dismiss(animated: true, completion: nil)
-                    showCrop(image: image)
-                } else if mediaType == "public.movie", let videoURL = info[.mediaURL] as? URL {
-                    showVideo(url: videoURL)
-                    isMediaSelected = true
-                    videoContainerView.isHidden = false
-                    imageView.isHidden = true
-                    picker.dismiss(animated: true, completion: nil)
-                }
+            if mediaType == "public.image", let image = info[.originalImage] as? UIImage {
+                isVideo = false
+                imageView.isHidden = false
+                videoContainerView.isHidden = true
+                picker.dismiss(animated: true, completion: nil)
+                showCrop(image: image)
+            } else if mediaType == "public.movie", let videoURL = info[.mediaURL] as? URL {
+                isVideo = true
+                showVideo(url: videoURL)
+                isMediaSelected = true
+                videoContainerView.isHidden = false
+                imageView.isHidden = true
+                picker.dismiss(animated: true, completion: nil)
             }
+        }
     }
     
     func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+        player?.play()
         picker.dismiss(animated: true, completion: nil)
     }
 }
@@ -422,7 +425,29 @@ extension MainViewController: CropViewControllerDelegate {
     }
     
     func exportButtonTapped(_ sender: UIButton) {
-        saveImage()
+        guard let isVideoSelected = isVideo else { return }
+        if isVideoSelected {
+            if let url = videoURL {
+                loadingIndicator.startAnimating()
+                
+                VideoHelper.convertVideoAndSaveTophotoLibrary(videoURL: url, watermarkLayerContents: socialMediaView.asImage().cgImage) { outputURL in
+                    DispatchQueue.main.async {
+                        self.loadingIndicator.stopAnimating()
+                        let alert: UIAlertController
+                        if let _ = outputURL {
+                            alert = UIAlertController(title: "Success", message: "The video successfully saved.", preferredStyle: .alert)
+                        } else {
+                            alert = UIAlertController(title: "Error", message: "Failed to save video", preferredStyle: .alert)
+                        }
+                        alert.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
+                        self.present(alert, animated: true, completion: nil)
+                    }
+                }
+            }
+        } else {
+            saveImage()
+        }
+        
         if trialMode != 0 {
             trialMode = trialMode - 1
         }
@@ -437,6 +462,7 @@ extension MainViewController: CropViewControllerDelegate {
             alert = UIAlertController(title: "Success", message: "The image successfully saved.", preferredStyle: .alert)
         }
         
+        loadingIndicator.stopAnimating()
         alert.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
         present(alert, animated: true, completion: nil)
     }
@@ -445,8 +471,9 @@ extension MainViewController: CropViewControllerDelegate {
         player?.seek(to: CMTime.zero)
         player?.play()
     }
-
+    
     func galleryBtnTapped(_ sender: UIButton) {
+        player?.pause()
         PHPhotoLibrary.requestAuthorization { status in
             switch status {
             case .authorized:

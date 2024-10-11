@@ -72,6 +72,7 @@ final class ExportView: UIView {
     
     func updateSubscriptionStatus(isSubscribed: Bool) {
         proButton.isHidden = isSubscribed
+        watermarkSwitch.isHidden = !isSubscribed
         qualitySegment.updateSubscriptionStatus(isSubscribed: isSubscribed)
     }
 }
